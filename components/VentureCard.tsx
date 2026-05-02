@@ -1,14 +1,15 @@
 import React from 'react';
 import { Venture } from '../types';
-import { Coins, Trash2, Crown, UserCog, Pencil } from 'lucide-react';
+import { Coins, Trash2, Crown, UserCog, Pencil, AlertCircle, Eye } from 'lucide-react';
 
 interface VentureCardProps {
   venture: Venture;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
+  showControls?: boolean;
 }
 
-const VentureCard: React.FC<VentureCardProps> = ({ venture, onDelete, onEdit }) => {
+const VentureCard: React.FC<VentureCardProps> = ({ venture, onDelete, onEdit, showControls = true }) => {
   return (
     <div className="group relative overflow-hidden rounded-xl border border-drow-700 bg-gradient-to-br from-drow-800 to-drow-900 p-5 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-drow-500/20 hover:border-drow-500">
       
@@ -21,9 +22,14 @@ const VentureCard: React.FC<VentureCardProps> = ({ venture, onDelete, onEdit }) 
             <h3 className="text-xl font-serif text-white font-bold tracking-wide drop-shadow-sm group-hover:text-drow-100 transition-colors">
                 {venture.name}
             </h3>
-            <span className="inline-block text-[10px] uppercase tracking-widest text-drow-300 font-bold bg-drow-950/50 px-2 py-0.5 rounded border border-drow-700/50 mt-1">
-                {venture.type}
-            </span>
+            <div className="flex gap-2 mt-1">
+                <span className="inline-block text-[10px] uppercase tracking-widest text-drow-300 font-bold bg-drow-950/50 px-2 py-0.5 rounded border border-drow-700/50">
+                    {venture.type}
+                </span>
+                <span className={`inline-block text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded border ${venture.notoriety > 70 ? 'bg-red-950/50 border-red-900 text-red-400' : 'bg-blue-950/50 border-blue-900 text-blue-400'}`}>
+                   Notorietà: {venture.notoriety}%
+                </span>
+            </div>
           </div>
           
           <div className={`px-2 py-1 rounded text-[10px] font-bold tracking-wider uppercase border ${venture.factionAlignment === 'Independent' 
@@ -73,49 +79,66 @@ const VentureCard: React.FC<VentureCardProps> = ({ venture, onDelete, onEdit }) 
               </span>
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[10px] uppercase font-bold text-gray-500 tracking-wider">
-                <span>Efficienza</span>
-                <span className="text-drow-300">{venture.efficiency}%</span>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] uppercase font-bold text-gray-500 tracking-wider">
+                    <span>Efficienza</span>
+                    <span className="text-drow-300">{venture.efficiency}%</span>
+                </div>
+                <div className="w-full bg-drow-950 rounded-full h-1.5 border border-drow-800 overflow-hidden">
+                    <div 
+                        className="bg-gradient-to-r from-green-800 to-green-500 h-1.5 rounded-full shadow-[0_0_5px_rgba(34,197,94,0.4)]" 
+                        style={{ width: `${venture.efficiency}%` }}
+                    ></div>
+                </div>
             </div>
-            <div className="w-full bg-drow-950 rounded-full h-1.5 border border-drow-800 overflow-hidden">
-                <div 
-                    className="bg-gradient-to-r from-green-800 to-green-500 h-1.5 rounded-full shadow-[0_0_5px_rgba(34,197,94,0.4)]" 
-                    style={{ width: `${venture.efficiency}%` }}
-                ></div>
-            </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[10px] uppercase font-bold text-gray-500 tracking-wider">
-                <span>Lealtà</span>
-                <span className="text-drow-300">{venture.loyalty}%</span>
-            </div>
-            <div className="w-full bg-drow-950 rounded-full h-1.5 border border-drow-800 overflow-hidden">
-                <div 
-                    className="bg-gradient-to-r from-purple-900 to-drow-500 h-1.5 rounded-full shadow-[0_0_5px_rgba(107,59,173,0.4)]" 
-                    style={{ width: `${venture.loyalty}%` }}
-                ></div>
+            <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] uppercase font-bold text-gray-500 tracking-wider">
+                    <span>Lealtà</span>
+                    <span className="text-drow-300">{venture.loyalty}%</span>
+                </div>
+                <div className="w-full bg-drow-950 rounded-full h-1.5 border border-drow-800 overflow-hidden">
+                    <div 
+                        className="bg-gradient-to-r from-purple-900 to-drow-500 h-1.5 rounded-full shadow-[0_0_5px_rgba(107,59,173,0.4)]" 
+                        style={{ width: `${venture.loyalty}%` }}
+                    ></div>
+                </div>
             </div>
           </div>
         </div>
 
-        <div className="absolute top-3 right-3 flex items-center space-x-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
-            <button 
-                onClick={() => onEdit(venture.id)}
-                className="p-1.5 text-blue-400 hover:text-white hover:bg-blue-900/50 rounded transition-all"
-                title="Modifica Attività"
-            >
-                <Pencil size={16} />
-            </button>
-            <button 
-                onClick={() => onDelete(venture.id)}
-                className="p-1.5 text-red-500/70 hover:text-red-400 hover:bg-red-950/50 rounded transition-all"
-                title="Smantella Attività"
-            >
-                <Trash2 size={16} />
-            </button>
-        </div>
+        {/* Pending Effects */}
+        {venture.pendingEffects && venture.pendingEffects.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+                {venture.pendingEffects.map(effect => (
+                    <div key={effect.id} className="flex items-center bg-red-900/30 border border-red-800/50 rounded-md px-2 py-1 text-[10px] text-red-300 animate-pulse" title={effect.description}>
+                        <AlertCircle size={10} className="mr-1" />
+                        <span className="font-bold truncate max-w-[120px]">{effect.description}</span>
+                        <span className="ml-1 opacity-60">({effect.remainingCycles})</span>
+                    </div>
+                ))}
+            </div>
+        )}
+
+        {showControls && (
+            <div className="absolute top-3 right-3 flex items-center space-x-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                <button 
+                    onClick={() => onEdit(venture.id)}
+                    className="p-1.5 text-blue-400 hover:text-white hover:bg-blue-900/50 rounded transition-all"
+                    title="Modifica Attività"
+                >
+                    <Pencil size={16} />
+                </button>
+                <button 
+                    onClick={() => onDelete(venture.id)}
+                    className="p-1.5 text-red-500/70 hover:text-red-400 hover:bg-red-950/50 rounded transition-all"
+                    title="Smantella Attività"
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+        )}
       </div>
     </div>
   );
