@@ -38,45 +38,53 @@ export default function DMView({ campaignId }: DMViewProps) {
     // Load everything from Supabase
     useEffect(() => {
         const fetchData = async () => {
-            // 1. Fetch Campaign Info
-            const { data: campaign } = await supabase.from('campaigns').select('*').eq('id', campaignId).single();
-            if (campaign) {
-                setGmNotes(campaign.gm_notes || "");
-                setState(prev => ({ ...prev, cycle: campaign.cycle, gold: campaign.gold, partyLevel: campaign.party_level }));
-            }
+            try {
+                // 1. Fetch Campaign Info
+                const { data: campaign } = await supabase.from('campaigns').select('*').eq('id', campaignId).single();
+                if (campaign) {
+                    setGmNotes(campaign.gm_notes || "");
+                    setState(prev => ({ ...prev, cycle: campaign.cycle, gold: campaign.gold, partyLevel: campaign.party_level }));
+                }
 
-            // 2. Fetch Ventures
-            const { data: ventures } = await supabase.from('ventures').select('*, pending_effects(*)').eq('campaign_id', campaignId);
-            if (ventures) {
-                const mappedVentures: Venture[] = ventures.map(v => ({
-                    id: v.id,
-                    name: v.name,
-                    type: v.type,
-                    partyMember: v.partyMember || "", // This should be display name from user_profile ideally
-                    manager: v.manager,
-                    description: v.description,
-                    baseIncome: v.base_income,
-                    baseCost: v.base_cost,
-                    efficiency: v.efficiency,
-                    loyalty: v.loyalty,
-                    notoriety: v.notoriety,
-                    factionAlignment: v.faction_alignment,
-                    currentDirective: v.current_directive,
-                    directiveLocked: v.directive_locked,
-                    pendingEffects: v.pending_effects.map((pe: any) => ({
-                        id: pe.id,
-                        sourceEventId: pe.source_event_id,
-                        description: pe.description,
-                        efficiencyDelta: pe.efficiency_delta,
-                        loyaltyDelta: pe.loyalty_delta,
-                        notorietyDelta: pe.notoriety_delta,
-                        remainingCycles: pe.remaining_cycles
-                    }))
-                }));
-                setState(prev => ({ ...prev, ventures: mappedVentures }));
-            }
+                // 2. Fetch Players for assignment (needed before ventures mapping)
+                const { data: profileData } = await supabase.from('user_profiles').select('id, display_name').eq('role', 'player');
+                const playerNameById = new Map((profileData || []).map(p => [p.id, p.display_name || "Sconosciuto"]));
+                if (profileData) {
+                    setPlayers(profileData.map(p => ({ id: p.id, email: p.display_name || "Sconosciuto" })));
+                }
 
-            // 3. Fetch History
+                // 3. Fetch Ventures
+                const { data: ventures } = await supabase.from('ventures').select('*, pending_effects(*)').eq('campaign_id', campaignId);
+                if (ventures) {
+                    const mappedVentures: Venture[] = ventures.map(v => ({
+                        id: v.id,
+                        name: v.name,
+                        type: v.type,
+                        partyMember: playerNameById.get(v.owner_user_id) || "",
+                        manager: v.manager,
+                        description: v.description,
+                        baseIncome: v.base_income,
+                        baseCost: v.base_cost,
+                        efficiency: v.efficiency,
+                        loyalty: v.loyalty,
+                        notoriety: v.notoriety,
+                        factionAlignment: v.faction_alignment,
+                        currentDirective: v.current_directive,
+                        directiveLocked: v.directive_locked,
+                        pendingEffects: v.pending_effects.map((pe: any) => ({
+                            id: pe.id,
+                            sourceEventId: pe.source_event_id,
+                            description: pe.description,
+                            efficiencyDelta: pe.efficiency_delta,
+                            loyaltyDelta: pe.loyalty_delta,
+                            notorietyDelta: pe.notoriety_delta,
+                            remainingCycles: pe.remaining_cycles
+                        }))
+                    }));
+                    setState(prev => ({ ...prev, ventures: mappedVentures }));
+                }
+
+                // 4. Fetch History
             const { data: history } = await supabase.from('cycle_reports').select('*').eq('campaign_id', campaignId).order('cycle_number', { ascending: false });
             if (history) {
                 setState(prev => ({ ...prev, history: history.map(h => ({
@@ -91,16 +99,15 @@ export default function DMView({ campaignId }: DMViewProps) {
                 })) }));
             }
 
-            // 4. Fetch Lore
+            // 5. Fetch Lore
             const { data: lore } = await supabase.from('lore_documents').select('*').eq('campaign_id', campaignId);
             if (lore) {
                 setState(prev => ({ ...prev, loreDocuments: lore }));
             }
 
-            // 5. Fetch Players for assignment
-            const { data: profileData } = await supabase.from('user_profiles').select('id, display_name').eq('role', 'player');
-            if (profileData) {
-                setPlayers(profileData.map(p => ({ id: p.id, email: p.display_name || "Sconosciuto" })));
+        } catch (error) {
+                console.error('Errore caricamento dati DM:', error);
+                setState(prev => ({ ...prev, lastError: 'Errore nel caricamento dati campagna.' }));
             }
         };
 
