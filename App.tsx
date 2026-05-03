@@ -20,7 +20,14 @@ export default function App() {
             try {
                 const currentUser = await getCurrentUser();
                 if (currentUser) {
-                    const userProfile = await getUserProfile(currentUser.id);
+                    let userProfile = await getUserProfile(currentUser.id);
+                    
+                    // FORCE DM ROLE for sentz01@gmail.com if it's not set
+                    if (currentUser.email === 'sentz01@gmail.com' && userProfile?.role !== 'dm') {
+                        await supabase.from('user_profiles').upsert({ id: currentUser.id, role: 'dm' });
+                        userProfile = await getUserProfile(currentUser.id);
+                    }
+
                     setUser(currentUser);
                     setProfile(userProfile);
                     

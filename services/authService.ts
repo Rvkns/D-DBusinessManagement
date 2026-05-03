@@ -22,13 +22,16 @@ export const signUp = async (
   if (error) throw new Error(error.message);
   if (!data.user) throw new Error('Registrazione fallita.');
 
-  // Aggiorna il profilo con display_name e ruolo
+  // Assicurati che il profilo esista e abbia il ruolo/nome corretto (usa upsert per evitare problemi di trigger)
   const { error: profileError } = await supabase
     .from('user_profiles')
-    .update({ display_name: displayName, role })
-    .eq('id', data.user.id);
+    .upsert({ 
+      id: data.user.id, 
+      display_name: displayName, 
+      role: role 
+    });
 
-  if (profileError) console.warn('Profilo non aggiornato:', profileError.message);
+  if (profileError) console.error('Errore creazione profilo:', profileError.message);
 
   return { user: data.user };
 };
