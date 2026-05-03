@@ -18,20 +18,37 @@ export const signUp = async (
   displayName: string,
   role: 'dm' | 'player' = 'player'
 ): Promise<{ user: User }> => {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        display_name: displayName,
+        role
+      }
+    }
+  });
   if (error) throw new Error(error.message);
   if (!data.user) throw new Error('Registrazione fallita.');
 
-  // Assicurati che il profilo esista e abbia il ruolo/nome corretto (usa upsert per evitare problemi di trigger)
+  // Se la conferma email è attiva, Supabase può non creare subito una sessione valida.
+  // In quel caso evitiamo upsert immediato (fallirebbe per RLS) e lasciamo al trigger DB la creazione base.
+  if (!data.session) {
+    return { user: data.user };
+  }
+
   const { error: profileError } = await supabase
     .from('user_profiles')
-    .upsert({ 
-      id: data.user.id, 
-      display_name: displayName, 
-      role: role 
+    .upsert({
+      id: data.user.id,
+      display_name: displayName,
+      role
     });
 
-  if (profileError) console.error('Errore creazione profilo:', profileError.message);
+  if (profileError) {
+    console.error('Errore creazione profilo:', profileError.message);
+    throw new Error('Registrazione completata, ma il profilo non è stato inizializzato. Riprova login tra pochi secondi.');
+  }
 
   return { user: data.user };
 };
