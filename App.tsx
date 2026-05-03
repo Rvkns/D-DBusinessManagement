@@ -146,11 +146,13 @@ export default function App() {
         await supabase.from('ventures').update({ directive_locked: true }).eq('id', vId);
     };
 
-    if (loading) {
+    if (loading || (profile?.role === 'dm' && !activeCampaignId)) {
         return (
             <div className="min-h-screen bg-drow-900 flex flex-col items-center justify-center text-drow-400">
                 <Gem className="w-12 h-12 animate-spin mb-4" />
-                <p className="font-serif uppercase tracking-widest animate-pulse">Invocazione alle Ombre...</p>
+                <p className="font-serif uppercase tracking-widest animate-pulse">
+                    {profile?.role === 'dm' ? "Preparazione Trono del Master..." : "Invocazione alle Ombre..."}
+                </p>
             </div>
         );
     }
@@ -175,8 +177,11 @@ export default function App() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center text-white">
-            <p>Ruolo non riconosciuto o errore di caricamento.</p>
+        <div className="min-h-screen flex flex-col items-center justify-center text-white bg-drow-950 p-6 text-center">
+            <Skull className="w-16 h-16 text-red-900 mb-4" />
+            <h2 className="text-2xl font-serif mb-2">Anomalia nel Profilo</h2>
+            <p className="text-drow-400 max-w-md mb-6">Non abbiamo trovato una campagna attiva o un ruolo valido per il tuo account.</p>
+            <button onClick={() => signOut().then(() => window.location.reload())} className="bg-drow-700 px-6 py-2 rounded-lg font-bold">Ritorna all'Ingresso</button>
         </div>
     );
 }
