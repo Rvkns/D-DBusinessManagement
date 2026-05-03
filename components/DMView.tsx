@@ -370,6 +370,14 @@ export default function DMView({ campaignId }: DMViewProps) {
                             <h1 className="text-xl md:text-2xl font-bold font-serif tracking-wider text-white uppercase" style={{ textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}>
                                 Underdark <span className="text-drow-400">Business</span>
                             </h1>
+                            <div className="mt-2 flex flex-wrap gap-2 items-center text-xs">
+                                <select value={selectedCampaignId} onChange={(e) => setSelectedCampaignId(e.target.value)} className="bg-black/40 border border-drow-700 rounded px-2 py-1 text-drow-100">
+                                    {dmCampaigns.map(c => <option key={c.id} value={c.id} className="bg-drow-900">{c.name}</option>)}
+                                </select>
+                                <button onClick={createNewCampaign} className="bg-drow-700 hover:bg-drow-600 px-2 py-1 rounded text-white">Nuova Campagna</button>
+                                <span className="text-drow-300">Codice: <span className="font-bold text-drow-100">{campaignJoinCode || 'N/D'}</span></span>
+                                <button onClick={regenerateJoinCode} className="bg-drow-700 hover:bg-drow-600 px-2 py-1 rounded text-white">Rigenera Codice</button>
+                            </div>
                         </div>
                     </div>
 
