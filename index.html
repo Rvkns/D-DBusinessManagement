@@ -71,8 +71,36 @@
     <!-- Mammoth.js for parsing Word Docs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   </head>
-  <body>
-    <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
-</body>
+  <body class="bg-black text-white">
+    <div id="root">
+      <div id="initial-loading" style="min-height: 100vh; display: flex; flex-col; align-items: center; justify-center; font-family: serif; color: #8e5cd9;">
+        <div style="text-align: center;">
+          <div style="width: 40px; height: 40px; border: 3px solid #4c2a85; border-top-color: #b084f5; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+          <p style="letter-spacing: 0.2em; text-transform: uppercase; font-size: 14px; opacity: 0.8;">Incanalando il potere del Sottosuolo...</p>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+
+    <script>
+      // Early Error Catcher
+      window.onerror = function(msg, url, line, col, error) {
+        var root = document.getElementById('root');
+        if (root) {
+          root.innerHTML = '<div style="padding: 40px; color: #ff6b6b; text-align: center; font-family: serif; background: #0a0310; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">' +
+            '<h1 style="text-transform: uppercase; letter-spacing: 3px;">Errore Arcano</h1>' +
+            '<p style="color: #8e5cd9; margin-bottom: 20px;">L\'incantesimo di caricamento è fallito.</p>' +
+            '<div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; max-width: 80%; overflow: auto;">' + msg + '</div>' +
+            '<button onclick="window.location.reload()" style="margin-top: 30px; background: #4c2a85; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; text-transform: uppercase; font-weight: bold;">Riprova il Rituale</button>' +
+            '</div>';
+        }
+        return false;
+      };
+    </script>
+
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>
