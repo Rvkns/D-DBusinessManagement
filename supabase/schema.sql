@@ -195,3 +195,38 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ============================================================
+-- CAMPAIGN JOIN CODES + MEMBERSHIP
+-- ============================================================
+
+ALTER TABLE public.campaigns
+  ADD COLUMN IF NOT EXISTS join_code TEXT UNIQUE;
+
+CREATE TABLE IF NOT EXISTS public.campaign_members (
+  campaign_id UUID NOT NULL REFERENCES public.campaigns(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (campaign_id, user_id)
+);
+
+ALTER TABLE public.campaign_members ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "dm_manage_campaign_members" ON public.campaign_members;
+CREATE POLICY "dm_manage_campaign_members" ON public.campaign_members
+  FOR ALL USING (public.is_dm_of_campaign(campaign_id))
+  WITH CHECK (public.is_dm_of_campaign(campaign_id));
+
+DROP POLICY IF EXISTS "player_view_own_membership" ON public.campaign_members;
+CREATE POLICY "player_view_own_membership" ON public.campaign_members
+  FOR SELECT USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "player_join_campaign" ON public.campaign_members;
+CREATE POLICY "player_join_campaign" ON public.campaign_members
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "player_reactivate_membership" ON public.campaign_members;
+CREATE POLICY "player_reactivate_membership" ON public.campaign_members
+  FOR UPDATE USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());

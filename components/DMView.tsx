@@ -34,6 +34,7 @@ export default function DMView({ campaignId }: DMViewProps) {
     const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
     const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; isDangerous?: boolean; confirmText?: string }>({ isOpen: false, title: '', message: '', onConfirm: () => { } });
     const [players, setPlayers] = useState<{id: string, email: string}[]>([]);
+    const [campaignJoinCode, setCampaignJoinCode] = useState('');
 
     // Load everything from Supabase
     useEffect(() => {
@@ -44,14 +45,18 @@ export default function DMView({ campaignId }: DMViewProps) {
                 if (campaign) {
                     setGmNotes(campaign.gm_notes || "");
                     setState(prev => ({ ...prev, cycle: campaign.cycle, gold: campaign.gold, partyLevel: campaign.party_level }));
+                    setCampaignJoinCode(campaign.join_code || '');
                 }
 
                 // 2. Fetch Players for assignment (needed before ventures mapping)
-                const { data: profileData } = await supabase.from('user_profiles').select('id, display_name').eq('role', 'player');
+                const { data: members } = await supabase.from('campaign_members').select('user_id').eq('campaign_id', campaignId).eq('status', 'active');
+                const memberIds = (members || []).map(m => m.user_id);
+                const { data: profileData } = memberIds.length > 0
+                    ? await supabase.from('user_profiles').select('id, display_name').in('id', memberIds)
+                    : { data: [] as any };
+
                 const playerNameById = new Map((profileData || []).map(p => [p.id, p.display_name || "Sconosciuto"]));
-                if (profileData) {
-                    setPlayers(profileData.map(p => ({ id: p.id, email: p.display_name || "Sconosciuto" })));
-                }
+                setPlayers((profileData || []).map(p => ({ id: p.id, email: p.display_name || "Sconosciuto" })));
 
                 // 3. Fetch Ventures
                 const { data: ventures } = await supabase.from('ventures').select('*, pending_effects(*)').eq('campaign_id', campaignId);
