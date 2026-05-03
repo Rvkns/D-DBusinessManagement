@@ -17,21 +17,27 @@ export default function App() {
 
     useEffect(() => {
         const initAuth = async () => {
-            const currentUser = await getCurrentUser();
-            if (currentUser) {
-                const userProfile = await getUserProfile(currentUser.id);
-                setUser(currentUser);
-                setProfile(userProfile);
-                
-                // If player, find their campaign and data
-                if (userProfile?.role === 'player') {
-                    await fetchPlayerData(currentUser.id);
-                } else if (userProfile?.role === 'dm') {
-                    await fetchDMCampaign(currentUser.id);
+            try {
+                const currentUser = await getCurrentUser();
+                if (currentUser) {
+                    const userProfile = await getUserProfile(currentUser.id);
+                    setUser(currentUser);
+                    setProfile(userProfile);
+                    
+                    // If player, find their campaign and data
+                    if (userProfile?.role === 'player') {
+                        await fetchPlayerData(currentUser.id);
+                    } else if (userProfile?.role === 'dm') {
+                        await fetchDMCampaign(currentUser.id);
+                    }
                 }
+            } catch (error) {
+                console.error("Auth initialization error:", error);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
+
 
         initAuth();
 
