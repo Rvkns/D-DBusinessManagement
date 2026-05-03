@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, DbUserProfile } from './services/supabaseClient';
-import { getCurrentUser, getUserProfile, onAuthStateChange } from './services/authService';
+import { getCurrentUser, getUserProfile, onAuthStateChange, signOut } from './services/authService';
 import AuthScreen from './components/AuthScreen';
 import DMView from './components/DMView';
 import PlayerView from './components/PlayerView';
 import { SimulationState, CycleReport, Venture, DirectiveId } from './types';
-import { Gem } from 'lucide-react';
+import { Gem, Skull } from 'lucide-react';
 
 export default function App() {
     const [loading, setLoading] = useState(true);
@@ -14,6 +14,7 @@ export default function App() {
     const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
     const [playerVentures, setPlayerVentures] = useState<Venture[]>([]);
     const [playerHistory, setPlayerHistory] = useState<CycleReport[]>([]);
+    const [dmCampaignLoading, setDmCampaignLoading] = useState(false);
 
     useEffect(() => {
         const initAuth = async () => {
@@ -121,18 +122,47 @@ export default function App() {
     };
 
     const fetchDMCampaign = async (userId: string) => {
-        const { data: campaign } = await supabase.from('campaigns').select('id').eq('dm_user_id', userId).single();
-        if (campaign) {
-            setActiveCampaignId(campaign.id);
-        } else {
-            // Create a default campaign for the DM if they don't have one
-            const { data: newCampaign } = await supabase.from('campaigns').insert({
-                name: "Nuova Campagna Underdark",
-                dm_user_id: userId,
-                gold: 1000,
-                party_level: 3
-            }).select().single();
-            if (newCampaign) setActiveCampaignId(newCampaign.id);
+        setDmCampaignLoading(true);
+        try {
+            const { data: campaign, error: campaignError } = await supabase
+                .from('campaigns')
+                .select('id')
+                .eq('dm_user_id', userId)
+                .order('created_at', { ascending: true })
+                .limit(1)
+                .maybeSingle();
+
+            if (campaignError) {
+                console.error('Campaign fetch error:', campaignError);
+                setActiveCampaignId(null);
+                return;
+            }
+
+            if (campaign) {
+                setActiveCampaignId(campaign.id);
+                return;
+            }
+
+            const { data: newCampaign, error: createError } = await supabase
+                .from('campaigns')
+                .insert({
+                    name: "Nuova Campagna Underdark",
+                    dm_user_id: userId,
+                    gold: 1000,
+                    party_level: 3
+                })
+                .select('id')
+                .single();
+
+            if (createError) {
+                console.error('Campaign creation error:', createError);
+                setActiveCampaignId(null);
+                return;
+            }
+
+            setActiveCampaignId(newCampaign.id);
+        } finally {
+            setDmCampaignLoading(false);
         }
     };
 
@@ -146,7 +176,7 @@ export default function App() {
         await supabase.from('ventures').update({ directive_locked: true }).eq('id', vId);
     };
 
-    if (loading || (profile?.role === 'dm' && !activeCampaignId)) {
+    if (loading || (profile?.role === 'dm' && dmCampaignLoading)) {
         return (
             <div className="min-h-screen bg-drow-900 flex flex-col items-center justify-center text-drow-400">
                 <Gem className="w-12 h-12 animate-spin mb-4" />
