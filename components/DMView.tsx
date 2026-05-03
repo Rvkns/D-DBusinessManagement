@@ -16,6 +16,8 @@ interface DMViewProps {
 }
 
 export default function DMView({ campaignId }: DMViewProps) {
+    const [selectedCampaignId, setSelectedCampaignId] = useState(campaignId);
+    const [dmCampaigns, setDmCampaigns] = useState<{id: string; name: string; join_code: string | null}[]>([]);
     const [state, setState] = useState<SimulationState>({
         cycle: 1,
         gold: 1000,
@@ -41,7 +43,7 @@ export default function DMView({ campaignId }: DMViewProps) {
         const fetchData = async () => {
             try {
                 // 1. Fetch Campaign Info
-                const { data: campaign } = await supabase.from('campaigns').select('*').eq('id', campaignId).single();
+                const { data: campaign } = await supabase.from('campaigns').select('*').eq('id', selectedCampaignId).single();
                 if (campaign) {
                     setGmNotes(campaign.gm_notes || "");
                     setState(prev => ({ ...prev, cycle: campaign.cycle, gold: campaign.gold, partyLevel: campaign.party_level }));
@@ -49,7 +51,7 @@ export default function DMView({ campaignId }: DMViewProps) {
                 }
 
                 // 2. Fetch Players for assignment (needed before ventures mapping)
-                const { data: members } = await supabase.from('campaign_members').select('user_id').eq('campaign_id', campaignId).eq('status', 'active');
+                const { data: members } = await supabase.from('campaign_members').select('user_id').eq('campaign_id', selectedCampaignId).eq('status', 'active');
                 const memberIds = (members || []).map(m => m.user_id);
                 const { data: profileData } = memberIds.length > 0
                     ? await supabase.from('user_profiles').select('id, display_name').in('id', memberIds)
@@ -59,7 +61,7 @@ export default function DMView({ campaignId }: DMViewProps) {
                 setPlayers((profileData || []).map(p => ({ id: p.id, email: p.display_name || "Sconosciuto" })));
 
                 // 3. Fetch Ventures
-                const { data: ventures } = await supabase.from('ventures').select('*, pending_effects(*)').eq('campaign_id', campaignId);
+                const { data: ventures } = await supabase.from('ventures').select('*, pending_effects(*)').eq('campaign_id', selectedCampaignId);
                 if (ventures) {
                     const mappedVentures: Venture[] = ventures.map(v => ({
                         id: v.id,
@@ -90,7 +92,7 @@ export default function DMView({ campaignId }: DMViewProps) {
                 }
 
                 // 4. Fetch History
-            const { data: history } = await supabase.from('cycle_reports').select('*').eq('campaign_id', campaignId).order('cycle_number', { ascending: false });
+            const { data: history } = await supabase.from('cycle_reports').select('*').eq('campaign_id', selectedCampaignId).order('cycle_number', { ascending: false });
             if (history) {
                 setState(prev => ({ ...prev, history: history.map(h => ({
                     cycleNumber: h.cycle_number,
@@ -105,7 +107,7 @@ export default function DMView({ campaignId }: DMViewProps) {
             }
 
             // 5. Fetch Lore
-            const { data: lore } = await supabase.from('lore_documents').select('*').eq('campaign_id', campaignId);
+            const { data: lore } = await supabase.from('lore_documents').select('*').eq('campaign_id', selectedCampaignId);
             if (lore) {
                 setState(prev => ({ ...prev, loreDocuments: lore }));
             }
@@ -117,7 +119,41 @@ export default function DMView({ campaignId }: DMViewProps) {
         };
 
         fetchData();
+    }, [selectedCampaignId]);
+
+    useEffect(() => {
+        setSelectedCampaignId(campaignId);
     }, [campaignId]);
+
+    useEffect(() => {
+        loadDmCampaigns();
+    }, []);
+
+    const loadDmCampaigns = async () => {
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData.user?.id;
+        if (!userId) return;
+        const { data } = await supabase.from('campaigns').select('id,name,join_code').eq('dm_user_id', userId).order('created_at', { ascending: true });
+        if (data) setDmCampaigns(data as any);
+    };
+
+    const createNewCampaign = async () => {
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData.user?.id;
+        if (!userId) return;
+        const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+        const { data, error } = await supabase.from('campaigns').insert({ name: `Campagna ${new Date().toLocaleDateString()}`, dm_user_id: userId, gold: 1000, party_level: 3, join_code: code }).select('id').single();
+        if (!error && data?.id) {
+            setSelectedCampaignId(data.id);
+            await loadDmCampaigns();
+        }
+    };
+
+    const regenerateJoinCode = async () => {
+        const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+        const { error } = await supabase.from('campaigns').update({ join_code: code }).eq('id', selectedCampaignId);
+        if (!error) setCampaignJoinCode(code);
+    };
 
     const handleSimulate = async () => {
         if (state.ventures.length === 0) {
@@ -137,7 +173,7 @@ export default function DMView({ campaignId }: DMViewProps) {
             // 3. Update Supabase - Campaign
             const newGold = state.gold + report.totalGoldChange;
             const newCycle = state.cycle + 1;
-            await supabase.from('campaigns').update({ gold: newGold, cycle: newCycle, gm_notes: gmNotes }).eq('id', campaignId);
+            await supabase.from('campaigns').update({ gold: newGold, cycle: newCycle, gm_notes: gmNotes }).eq('id', selectedCampaignId);
 
             // 4. Update Supabase - Ventures & Pending Effects
             for (const res of results) {
@@ -166,7 +202,7 @@ export default function DMView({ campaignId }: DMViewProps) {
 
             // 5. Save Report
             await supabase.from('cycle_reports').insert({
-                campaign_id: campaignId,
+                campaign_id: selectedCampaignId,
                 cycle_number: state.cycle,
                 total_gold_change: report.totalGoldChange,
                 venture_reports: report.ventureReports,
@@ -210,7 +246,7 @@ export default function DMView({ campaignId }: DMViewProps) {
             for (const file of Array.from(e.target.files)) {
                 const doc = await parseFile(file);
                 const { data } = await supabase.from('lore_documents').insert({
-                    campaign_id: campaignId,
+                    campaign_id: selectedCampaignId,
                     name: doc.name,
                     type: doc.type,
                     content: doc.content,
@@ -238,7 +274,7 @@ export default function DMView({ campaignId }: DMViewProps) {
         if (!newVenture.name || !newVenture.type) return;
 
         const ventureData = {
-            campaign_id: campaignId,
+            campaign_id: selectedCampaignId,
             name: newVenture.name,
             type: newVenture.type || "Generico",
             manager: newVenture.manager || "Sconosciuto",
