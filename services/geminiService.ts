@@ -105,7 +105,7 @@ export const generateSimulationCycle = async (
     
     const data = JSON.parse(jsonText);
 
-    let fullText = \`## 🏢 STATO DELLE ATTIVITÀ (Ciclo \${currentCycle})\n\n\`;
+    let fullText = `## 🏢 STATO DELLE ATTIVITÀ (Ciclo ${currentCycle})\n\n`;
     
     // Total gold change is now calculated from our engine's exact numbers, NOT the AI's potentially flaky interpretation
     const totalGoldChange = calculatedResults.reduce((sum, res) => sum + res.netGold, 0);
@@ -118,10 +118,10 @@ export const generateSimulationCycle = async (
             politicalImpact: "Nessun impatto."
         };
 
-        fullText += \`### \${calc.ventureName}\n\`;
-        fullText += \`- **Eco:** \${aiReport.economicResult} (\${calc.netGold > 0 ? '+' : ''}\${calc.netGold} mo)\n\`;
-        fullText += \`- **Logistica:** \${aiReport.logisticsStatus}\n\`;
-        fullText += \`- **Pol:** \${aiReport.politicalImpact}\n\n\`;
+        fullText += `### ${calc.ventureName}\n`;
+        fullText += `- **Eco:** ${aiReport.economicResult} (${calc.netGold > 0 ? '+' : ''}${calc.netGold} mo)\n`;
+        fullText += `- **Logistica:** ${aiReport.logisticsStatus}\n`;
+        fullText += `- **Pol:** ${aiReport.politicalImpact}\n\n`;
 
         return {
             ventureId: calc.ventureId,
@@ -133,8 +133,8 @@ export const generateSimulationCycle = async (
         };
     });
 
-    fullText += \`## 👁️ RAPPORTO DALLE OMBRE\n\${data.shadowReport}\n\n\`;
-    fullText += \`## ⚠️ SVILUPPO NARRATIVO\n\${data.narrativeDilemma}\`;
+    fullText += `## 👁️ RAPPORTO DALLE OMBRE\n${data.shadowReport}\n\n`;
+    fullText += `## ⚠️ SVILUPPO NARRATIVO\n${data.narrativeDilemma}`;
 
     const diceRolls: Record<string, number> = {};
     calculatedResults.forEach(r => diceRolls[r.ventureId] = r.rawRoll);
