@@ -112,6 +112,26 @@ ALTER TABLE public.pending_effects  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cycle_reports    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lore_documents   ENABLE ROW LEVEL SECURITY;
 
+
+-- Helper function: avoids recursive RLS chains when checking DM ownership
+CREATE OR REPLACE FUNCTION public.is_dm_of_campaign(campaign_uuid UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.campaigns c
+    WHERE c.id = campaign_uuid
+      AND c.dm_user_id = auth.uid()
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.is_dm_of_campaign(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_dm_of_campaign(UUID) TO authenticated;
+
 -- user_profiles: ognuno vede il proprio profilo
 CREATE POLICY "user_own_profile" ON user_profiles
   FOR ALL USING (id = auth.uid());
@@ -127,9 +147,7 @@ CREATE POLICY "player_view_campaigns" ON campaigns
 
 -- ventures: DM vede tutte nella sua campagna, Player solo le sue
 CREATE POLICY "dm_full_ventures" ON ventures
-  FOR ALL USING (
-    campaign_id IN (SELECT id FROM campaigns WHERE dm_user_id = auth.uid())
-  );
+  FOR ALL USING (public.is_dm_of_campaign(campaign_id));
 
 CREATE POLICY "player_own_ventures" ON ventures
   FOR SELECT USING (owner_user_id = auth.uid());
@@ -141,11 +159,7 @@ CREATE POLICY "player_update_directive" ON ventures
 -- pending_effects: segue le regole della venture parent
 CREATE POLICY "dm_pending_effects" ON pending_effects
   FOR ALL USING (
-    venture_id IN (
-      SELECT v.id FROM ventures v
-      JOIN campaigns c ON c.id = v.campaign_id
-      WHERE c.dm_user_id = auth.uid()
-    )
+    venture_id IN (SELECT v.id FROM ventures v WHERE public.is_dm_of_campaign(v.campaign_id))
   );
 
 CREATE POLICY "player_view_pending_effects" ON pending_effects
@@ -155,9 +169,7 @@ CREATE POLICY "player_view_pending_effects" ON pending_effects
 
 -- cycle_reports: DM può creare/leggere, Player può solo leggere
 CREATE POLICY "dm_manage_reports" ON cycle_reports
-  FOR ALL USING (
-    campaign_id IN (SELECT id FROM campaigns WHERE dm_user_id = auth.uid())
-  );
+  FOR ALL USING (public.is_dm_of_campaign(campaign_id));
 
 CREATE POLICY "player_view_reports" ON cycle_reports
   FOR SELECT USING (
@@ -166,9 +178,7 @@ CREATE POLICY "player_view_reports" ON cycle_reports
 
 -- lore_documents: solo DM
 CREATE POLICY "dm_lore_documents" ON lore_documents
-  FOR ALL USING (
-    campaign_id IN (SELECT id FROM campaigns WHERE dm_user_id = auth.uid())
-  );
+  FOR ALL USING (public.is_dm_of_campaign(campaign_id));
 
 -- ============================================================
 -- FUNZIONE: auto-crea profilo utente dopo registrazione
