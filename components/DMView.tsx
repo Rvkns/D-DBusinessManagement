@@ -9,7 +9,7 @@ import { parseFile } from '../services/fileParsing';
 import { runFullSimulation } from '../utils/simulationEngine';
 import { supabase } from '../services/supabaseClient';
 import { signOut } from '../services/authService';
-import { Plus, Play, History, Skull, RotateCcw, Gem, Upload, FileText, Trash2, BookOpen, ChevronDown, LogOut, Users } from 'lucide-react';
+import { Plus, Play, History, Skull, RotateCcw, Gem, Upload, FileText, Trash2, BookOpen, ChevronDown, LogOut, Users, Settings, UserX } from 'lucide-react';
 
 interface DMViewProps {
     campaignId: string;
@@ -37,6 +37,9 @@ export default function DMView({ campaignId }: DMViewProps) {
     const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; isDangerous?: boolean; confirmText?: string }>({ isOpen: false, title: '', message: '', onConfirm: () => { } });
     const [players, setPlayers] = useState<{id: string, email: string}[]>([]);
     const [campaignJoinCode, setCampaignJoinCode] = useState('');
+    const [campaignName, setCampaignName] = useState('');
+    const [showCampaignModal, setShowCampaignModal] = useState(false);
+    const [members, setMembers] = useState<{user_id: string; display_name: string; status: string}[]>([]);
 
     // Load everything from Supabase
     useEffect(() => {
@@ -48,10 +51,11 @@ export default function DMView({ campaignId }: DMViewProps) {
                     setGmNotes(campaign.gm_notes || "");
                     setState(prev => ({ ...prev, cycle: campaign.cycle, gold: campaign.gold, partyLevel: campaign.party_level }));
                     setCampaignJoinCode(campaign.join_code || '');
+                    setCampaignName(campaign.name || 'Campagna');
                 }
 
                 // 2. Fetch Players for assignment (needed before ventures mapping)
-                const { data: members } = await supabase.from('campaign_members').select('user_id').eq('campaign_id', selectedCampaignId).eq('status', 'active');
+                const { data: members } = await supabase.from('campaign_members').select('user_id,status').eq('campaign_id', selectedCampaignId);
                 const memberIds = (members || []).map(m => m.user_id);
                 const { data: profileData } = memberIds.length > 0
                     ? await supabase.from('user_profiles').select('id, display_name').in('id', memberIds)
@@ -59,6 +63,11 @@ export default function DMView({ campaignId }: DMViewProps) {
 
                 const playerNameById = new Map((profileData || []).map(p => [p.id, p.display_name || "Sconosciuto"]));
                 setPlayers((profileData || []).map(p => ({ id: p.id, email: p.display_name || "Sconosciuto" })));
+                setMembers((members || []).map(m => ({
+                    user_id: m.user_id,
+                    status: m.status,
+                    display_name: playerNameById.get(m.user_id) || 'Sconosciuto'
+                })));
 
                 // 3. Fetch Ventures
                 const { data: ventures } = await supabase.from('ventures').select('*, pending_effects(*)').eq('campaign_id', selectedCampaignId);
@@ -153,6 +162,21 @@ export default function DMView({ campaignId }: DMViewProps) {
         const code = Math.random().toString(36).slice(2, 8).toUpperCase();
         const { error } = await supabase.from('campaigns').update({ join_code: code }).eq('id', selectedCampaignId);
         if (!error) setCampaignJoinCode(code);
+    };
+
+
+    const saveCampaignSettings = async () => {
+        await supabase.from('campaigns').update({ name: campaignName }).eq('id', selectedCampaignId);
+        await loadDmCampaigns();
+        setShowCampaignModal(false);
+    };
+
+    const setMemberStatus = async (userId: string, status: 'active' | 'inactive') => {
+        await supabase.from('campaign_members').update({ status }).eq('campaign_id', selectedCampaignId).eq('user_id', userId);
+        const { data: refreshed } = await supabase.from('campaign_members').select('user_id,status').eq('campaign_id', selectedCampaignId);
+        if (refreshed) {
+            setMembers(prev => refreshed.map(r => ({ user_id: r.user_id, status: r.status, display_name: prev.find(p => p.user_id === r.user_id)?.display_name || 'Player' })));
+        }
     };
 
     const handleSimulate = async () => {
@@ -377,6 +401,7 @@ export default function DMView({ campaignId }: DMViewProps) {
                                 <button onClick={createNewCampaign} className="bg-drow-700 hover:bg-drow-600 px-2 py-1 rounded text-white">Nuova Campagna</button>
                                 <span className="text-drow-300">Codice: <span className="font-bold text-drow-100">{campaignJoinCode || 'N/D'}</span></span>
                                 <button onClick={regenerateJoinCode} className="bg-drow-700 hover:bg-drow-600 px-2 py-1 rounded text-white">Rigenera Codice</button>
+                                <button onClick={() => setShowCampaignModal(true)} className="bg-drow-800 hover:bg-drow-700 px-2 py-1 rounded text-white flex items-center gap-1"><Settings size={12} /> Gestisci</button>
                             </div>
                         </div>
                     </div>
@@ -520,6 +545,35 @@ export default function DMView({ campaignId }: DMViewProps) {
                         <div className="p-5 flex justify-end gap-2 border-t border-drow-700">
                             <button onClick={() => setShowAddModal(false)} className="px-4 py-2 text-gray-400">Annulla</button>
                             <button onClick={handleSaveVenture} className="px-6 py-2 bg-drow-600 text-white font-bold rounded">Salva</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
+            {showCampaignModal && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4">
+                    <div className="w-full max-w-xl bg-drow-900 border border-drow-600 rounded-xl">
+                        <div className="p-4 border-b border-drow-700 flex justify-between items-center">
+                            <h3 className="text-lg font-serif text-white">Gestione Campagna</h3>
+                            <button onClick={() => setShowCampaignModal(false)} className="text-gray-300">×</button>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div>
+                                <label className="text-xs text-drow-300">Nome Campagna</label>
+                                <input value={campaignName} onChange={(e) => setCampaignName(e.target.value)} className="w-full mt-1 bg-black/40 border border-drow-700 p-2 text-white rounded" />
+                            </div>
+                            <div className="text-sm text-drow-200">Codice attuale: <span className="font-bold">{campaignJoinCode || 'N/D'}</span></div>
+                            <div>
+                                <h4 className="text-sm font-bold text-white mb-2">Membri</h4>
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {members.map(m => <div key={m.user_id} className="flex items-center justify-between bg-black/40 border border-drow-800 rounded p-2"><span className="text-sm text-gray-200">{m.display_name} <span className="text-xs text-drow-400">({m.status})</span></span><button onClick={() => setMemberStatus(m.user_id, m.status === 'active' ? 'inactive' : 'active')} className="text-xs bg-drow-700 px-2 py-1 rounded">{m.status === 'active' ? 'Disattiva' : 'Attiva'}</button></div>)}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-drow-700 flex justify-end gap-2">
+                            <button onClick={() => setShowCampaignModal(false)} className="px-4 py-2 text-gray-400">Annulla</button>
+                            <button onClick={saveCampaignSettings} className="px-4 py-2 bg-drow-600 rounded text-white font-bold">Salva</button>
                         </div>
                     </div>
                 </div>

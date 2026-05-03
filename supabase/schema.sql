@@ -230,3 +230,5 @@ DROP POLICY IF EXISTS "player_reactivate_membership" ON public.campaign_members;
 CREATE POLICY "player_reactivate_membership" ON public.campaign_members
   FOR UPDATE USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
+
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT active CHECK (status IN (active,archived));
