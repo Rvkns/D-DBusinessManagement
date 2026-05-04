@@ -400,6 +400,7 @@ export function applyStatDeltas(venture: Venture, directive: Directive, event: S
         newPendingEffects.push({
             id: crypto.randomUUID(),
             sourceEventId: event.id,
+            sourceEventName: event.name,
             description: event.effects.nextCyclePenalty.description || `Effetto persistente da: ${event.name}`,
             efficiencyDelta: event.effects.nextCyclePenalty.efficiencyDelta || 0,
             loyaltyDelta: event.effects.nextCyclePenalty.loyaltyDelta || 0,
@@ -413,6 +414,7 @@ export function applyStatDeltas(venture: Venture, directive: Directive, event: S
         newPendingEffects.push({
             id: crypto.randomUUID(),
             sourceEventId: directive.id,
+            sourceEventName: directive.label,
             description: `Effetto dell'investimento: ${directive.label}`,
             efficiencyDelta: directive.effects.nextCycleEfficiencyBonus,
             loyaltyDelta: 0,

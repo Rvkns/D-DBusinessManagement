@@ -113,9 +113,12 @@ const VentureCard: React.FC<VentureCardProps> = ({ venture, onDelete, onEdit, sh
             <div className="mt-4 flex flex-wrap gap-2">
                 {venture.pendingEffects.map(effect => (
                     <div key={effect.id} className="flex items-center bg-red-900/30 border border-red-800/50 rounded-md px-2 py-1 text-[10px] text-red-300 animate-pulse" title={effect.description}>
-                        <AlertCircle size={10} className="mr-1" />
+                        <AlertCircle size={10} className="mr-1 shrink-0" />
                         <span className="font-bold truncate max-w-[120px]">{effect.description}</span>
-                        <span className="ml-1 opacity-60">({effect.remainingCycles})</span>
+                        {effect.sourceEventName && (
+                            <span className="ml-1 opacity-50 shrink-0">· {effect.sourceEventName}</span>
+                        )}
+                        <span className="ml-1 opacity-60 shrink-0">({effect.remainingCycles})</span>
                     </div>
                 ))}
             </div>

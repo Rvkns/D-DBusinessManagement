@@ -28,6 +28,7 @@ export interface Directive {
 export interface PendingEffect {
   id: string; // Add ID for DB
   sourceEventId: string;
+  sourceEventName?: string;
   description: string;
   efficiencyDelta: number;
   loyaltyDelta: number;
