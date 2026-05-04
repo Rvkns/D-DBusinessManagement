@@ -88,6 +88,13 @@
     <script>
       // Early Error Catcher
       window.onerror = function(msg, url, line, col, error) {
+        // Ignore benign browser notifications that are not real app errors
+        if (typeof msg === 'string' && (
+          msg.includes('ResizeObserver loop') ||
+          msg.includes('Non-Error promise rejection')
+        )) {
+          return true;
+        }
         var root = document.getElementById('root');
         if (root) {
           root.innerHTML = '<div style="padding: 40px; color: #ff6b6b; text-align: center; font-family: serif; background: #0a0310; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">' +
@@ -98,6 +105,17 @@
             '</div>';
         }
         return false;
+      };
+
+      // Catch unhandled promise rejections (not caught by window.onerror)
+      window.onunhandledrejection = function(event) {
+        var msg = event.reason && (event.reason.message || String(event.reason));
+        if (!msg || msg.includes('ResizeObserver') || msg.includes('Non-Error')) return;
+        // Only show error screen if React hasn't mounted yet
+        var root = document.getElementById('root');
+        if (root && root.querySelector('#initial-loading')) {
+          window.onerror(msg, '', 0, 0, event.reason);
+        }
       };
     </script>
 

@@ -45,18 +45,22 @@ export default function App() {
         initAuth();
 
         const subscription = onAuthStateChange(async (session) => {
-            if (session?.user) {
-                const userProfile = await getUserProfile(session.user.id);
-                setUser(session.user);
-                setProfile(userProfile);
-                if (userProfile?.role === 'player') await fetchPlayerData(session.user.id, userProfile);
-                else if (userProfile?.role === 'dm') await fetchDMCampaign(session.user.id);
-            } else {
-                setUser(null);
-                setProfile(null);
-                setActiveCampaignId(null);
-                setPlayerVentures([]);
-                setPlayerHistory([]);
+            try {
+                if (session?.user) {
+                    const userProfile = await getUserProfile(session.user.id);
+                    setUser(session.user);
+                    setProfile(userProfile);
+                    if (userProfile?.role === 'player') await fetchPlayerData(session.user.id, userProfile);
+                    else if (userProfile?.role === 'dm') await fetchDMCampaign(session.user.id);
+                } else {
+                    setUser(null);
+                    setProfile(null);
+                    setActiveCampaignId(null);
+                    setPlayerVentures([]);
+                    setPlayerHistory([]);
+                }
+            } catch (error) {
+                console.error('Auth state change error:', error);
             }
         });
 
