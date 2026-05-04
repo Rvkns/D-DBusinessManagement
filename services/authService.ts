@@ -92,12 +92,11 @@ export const getUserProfile = async (userId: string): Promise<DbUserProfile | nu
 
 export const updateUserProfile = async (
   userId: string,
-  updates: Partial<Pick<DbUserProfile, 'display_name' | 'character_name' | 'role'>>
+  updates: Partial<DbUserProfile>
 ): Promise<void> => {
   const { error } = await supabase
     .from('user_profiles')
-    .update(updates)
-    .eq('id', userId);
+    .upsert({ id: userId, ...updates });
   if (error) throw new Error(error.message);
 };
 

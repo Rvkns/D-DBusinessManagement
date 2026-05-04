@@ -234,11 +234,17 @@ export default function App() {
 
     const handleUpdateProfile = async (updates: Partial<DbUserProfile>) => {
         if (!user?.id) return;
-        await updateUserProfile(user.id, updates);
-        const newProfile = await getUserProfile(user.id);
-        setProfile(newProfile);
-        // Refresh player data to see new name in ventures
-        if (newProfile?.role === 'player') await fetchPlayerData(user.id, newProfile);
+        try {
+            await updateUserProfile(user.id, updates);
+            const newProfile = await getUserProfile(user.id);
+            setProfile(newProfile);
+            setToast({ message: 'Profilo aggiornato con successo!', type: 'success' });
+            // Refresh player data to see new name in ventures
+            if (newProfile?.role === 'player') await fetchPlayerData(user.id, newProfile);
+        } catch (error: any) {
+            setToast({ message: 'Errore durante l\'aggiornamento: ' + error.message, type: 'error' });
+            throw error;
+        }
     };
 
     if (loading || (profile?.role === 'dm' && dmCampaignLoading)) {
