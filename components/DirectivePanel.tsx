@@ -5,12 +5,13 @@ import { ChevronDown, Lock } from 'lucide-react';
 
 interface DirectivePanelProps {
     ventures: Venture[];
+    currentUserId?: string;
     onSelectDirective: (ventureId: string, directiveId: DirectiveId) => void;
     onLockDirective: (ventureId: string) => void;
     isDMView?: boolean;
 }
 
-export default function DirectivePanel({ ventures, onSelectDirective, onLockDirective, isDMView = false }: DirectivePanelProps) {
+export default function DirectivePanel({ ventures, currentUserId, onSelectDirective, onLockDirective, isDMView = false }: DirectivePanelProps) {
     if (ventures.length === 0) return null;
 
     return (
@@ -31,6 +32,8 @@ export default function DirectivePanel({ ventures, onSelectDirective, onLockDire
                 {ventures.map(v => {
                     const currentDir = DIRECTIVES[v.currentDirective as DirectiveId] || DIRECTIVES['MAINTAIN'];
                     const isLocked = v.directiveLocked;
+                    const isOwner = v.owner_user_id === currentUserId;
+                    const canEdit = isOwner && !isDMView;
 
                     return (
                         <div key={v.id} className={`p-4 transition-colors ${isLocked ? 'bg-drow-900/10' : 'hover:bg-white/5'}`}>
@@ -39,10 +42,12 @@ export default function DirectivePanel({ ventures, onSelectDirective, onLockDire
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2">
                                         <h4 className="font-bold text-gray-200">{v.name}</h4>
-                                        {isDMView && <span className="text-[10px] uppercase text-drow-500 bg-black/50 px-2 py-0.5 rounded border border-drow-800">PG: {v.partyMember}</span>}
+                                        <span className={`text-[10px] uppercase px-2 py-0.5 rounded border ${isOwner ? 'text-emerald-400 bg-emerald-950/30 border-emerald-900/50' : 'text-drow-400 bg-black/50 border-drow-800'}`}>
+                                            {isOwner ? 'Tu' : v.partyMember}
+                                        </span>
                                     </div>
                                     
-                                    {!isLocked && !isDMView && (
+                                    {!isLocked && canEdit && (
                                         <p className="text-xs text-drow-300 mt-1">Modificatori previsti: {
                                             [
                                                 currentDir.effects.goldMultiplier && `${Math.round((currentDir.effects.goldMultiplier - 1) * 100)}% Profitto`,
@@ -53,6 +58,9 @@ export default function DirectivePanel({ ventures, onSelectDirective, onLockDire
                                                 currentDir.effects.nextCycleEfficiencyBonus && `+${currentDir.effects.nextCycleEfficiencyBonus} Efficienza (prossimo)`,
                                             ].filter(Boolean).join(', ') || 'Nessuno'
                                         }</p>
+                                    )}
+                                    {!canEdit && !isDMView && (
+                                        <p className="text-xs text-drow-500 mt-1">Sola visualizzazione (Asset di {v.partyMember})</p>
                                     )}
                                 </div>
 
@@ -66,22 +74,22 @@ export default function DirectivePanel({ ventures, onSelectDirective, onLockDire
                                     ) : (
                                         <div className="relative flex-1 md:w-64">
                                             <select
-                                                disabled={isDMView} // DM shouldn't change player directives typically, or maybe they can? Let's disable for now
+                                                disabled={!canEdit} 
                                                 value={v.currentDirective}
                                                 onChange={(e) => onSelectDirective(v.id, e.target.value as DirectiveId)}
-                                                className="w-full bg-black/40 border border-drow-600 rounded p-2.5 text-sm font-bold text-white focus:border-drow-400 focus:outline-none focus:ring-1 focus:ring-drow-400 transition-all appearance-none cursor-pointer"
+                                                className={`w-full bg-black/40 border border-drow-600 rounded p-2.5 text-sm font-bold text-white focus:border-drow-400 focus:outline-none focus:ring-1 focus:ring-drow-400 transition-all appearance-none ${!canEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                                             >
                                                 {Object.values(DIRECTIVES).map(dir => (
                                                     <option key={dir.id} value={dir.id} className="bg-drow-900 text-gray-200">
                                                         {dir.icon} {dir.label}
-                                                    </option>
+                                                     </option>
                                                 ))}
                                             </select>
-                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-drow-400 pointer-events-none" size={16} />
+                                            {canEdit && <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-drow-400 pointer-events-none" size={16} />}
                                         </div>
                                     )}
 
-                                    {!isDMView && !isLocked && (
+                                    {!isDMView && !isLocked && canEdit && (
                                         <button
                                             onClick={() => onLockDirective(v.id)}
                                             className="bg-drow-700 hover:bg-drow-600 text-white p-2.5 rounded border border-drow-500/50 transition-colors shadow-lg shrink-0"

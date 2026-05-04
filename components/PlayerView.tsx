@@ -7,13 +7,14 @@ import { Gem, LogOut, ShieldCheck, AlertCircle } from 'lucide-react';
 import { signOut } from '../services/authService';
 
 interface PlayerViewProps {
+    currentUserId: string;
     ventures: Venture[];
     history: CycleReport[];
     onSelectDirective: (ventureId: string, directiveId: DirectiveId) => void;
     onLockDirective: (ventureId: string) => void;
 }
 
-export default function PlayerView({ ventures, history, onSelectDirective, onLockDirective }: PlayerViewProps) {
+export default function PlayerView({ currentUserId, ventures, history, onSelectDirective, onLockDirective }: PlayerViewProps) {
     const handleLogout = async () => {
         try {
             await signOut();
@@ -23,9 +24,12 @@ export default function PlayerView({ ventures, history, onSelectDirective, onLoc
     };
 
     const latestReport = history.length > 0 ? history[0] : null;
-    const lockedCount = ventures.filter(v => v.directiveLocked).length;
-    const missingDirectiveCount = ventures.filter(v => !v.currentDirective).length;
-    const readyForCycle = ventures.length > 0 && lockedCount === ventures.length;
+    const myVentures = ventures.filter(v => v.owner_user_id === currentUserId);
+    const allyVentures = ventures.filter(v => v.owner_user_id !== currentUserId);
+    
+    const lockedCount = myVentures.filter(v => v.directiveLocked).length;
+    const missingDirectiveCount = myVentures.filter(v => !v.currentDirective).length;
+    const readyForCycle = myVentures.length > 0 && lockedCount === myVentures.length;
 
     return (
         <div className="min-h-screen font-sans selection:bg-drow-500 selection:text-white pb-10">
@@ -87,27 +91,37 @@ export default function PlayerView({ ventures, history, onSelectDirective, onLoc
                             </h2>
                             <DirectivePanel 
                                 ventures={ventures} 
+                                currentUserId={currentUserId}
                                 onSelectDirective={onSelectDirective} 
                                 onLockDirective={onLockDirective} 
                             />
                         </section>
 
-                        <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div>
-                                <h2 className="text-xl font-serif font-bold text-white mb-4 tracking-wide border-b border-drow-800 pb-2">
-                                    Le Tue Attività
+                                <h2 className="text-xl font-serif font-bold text-white mb-4 tracking-wide border-b border-drow-800 pb-2 flex items-center justify-between">
+                                    <span>Le Tue Attività</span>
+                                    <span className="text-xs bg-drow-800 px-2 py-1 rounded text-drow-300">{myVentures.length}</span>
                                 </h2>
-                                <div className="space-y-4">
-                                    {ventures.map(v => (
-                                        <VentureCard 
-                                            key={v.id} 
-                                            venture={v} 
-                                            // No edit/delete permissions for players currently
-                                            onDelete={() => {}} 
-                                            onEdit={() => {}} 
-                                        />
-                                    ))}
+                                <div className="space-y-4 mb-8">
+                                    {myVentures.length > 0 ? myVentures.map(v => (
+                                        <VentureCard key={v.id} venture={v} onDelete={() => {}} onEdit={() => {}} />
+                                    )) : <p className="text-sm text-drow-500 italic">Nessuna attività assegnata a te.</p>}
                                 </div>
+
+                                {allyVentures.length > 0 && (
+                                    <>
+                                        <h2 className="text-xl font-serif font-bold text-white mb-4 tracking-wide border-b border-drow-800 pb-2 flex items-center justify-between">
+                                            <span>Attività Alleate</span>
+                                            <span className="text-xs bg-drow-800 px-2 py-1 rounded text-drow-300">{allyVentures.length}</span>
+                                        </h2>
+                                        <div className="space-y-4">
+                                            {allyVentures.map(v => (
+                                                <VentureCard key={v.id} venture={v} onDelete={() => {}} onEdit={() => {}} />
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
                             <div>

@@ -85,18 +85,31 @@ export default function App() {
         const campaignId = membership.campaign_id;
         setActiveCampaignId(campaignId);
 
+        const { data: members } = await supabase
+            .from('campaign_members')
+            .select('user_id')
+            .eq('campaign_id', campaignId);
+
+        const memberIds = members?.map(m => m.user_id) || [];
+        const { data: profiles } = await supabase
+            .from('user_profiles')
+            .select('id, display_name')
+            .in('id', memberIds);
+
+        const profileMap = new Map(profiles?.map(p => [p.id, p.display_name]));
+
         const { data: ventures } = await supabase
             .from('ventures')
             .select('*, pending_effects(*)')
-            .eq('owner_user_id', userId)
             .eq('campaign_id', campaignId);
 
         if (ventures) {
             const mappedVentures: Venture[] = ventures.map(v => ({
                 id: v.id,
+                owner_user_id: v.owner_user_id,
                 name: v.name,
                 type: v.type,
-                partyMember: userProfile?.display_name || profile?.display_name || '',
+                partyMember: profileMap.get(v.owner_user_id) || 'Sconosciuto',
                 manager: v.manager,
                 description: v.description,
                 baseIncome: v.base_income,
@@ -239,7 +252,7 @@ export default function App() {
             );
         }
 
-        return <PlayerView ventures={playerVentures} history={playerHistory} onSelectDirective={handleSelectDirective} onLockDirective={handleLockDirective} />;
+        return <PlayerView currentUserId={user.id} ventures={playerVentures} history={playerHistory} onSelectDirective={handleSelectDirective} onLockDirective={handleLockDirective} />;
     }
 
     return (

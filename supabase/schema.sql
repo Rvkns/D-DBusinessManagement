@@ -143,16 +143,25 @@ CREATE POLICY "dm_own_campaigns" ON campaigns
 CREATE POLICY "player_view_campaigns" ON campaigns
   FOR SELECT USING (
     id IN (SELECT campaign_id FROM ventures WHERE owner_user_id = auth.uid())
+    OR
+    id IN (SELECT campaign_id FROM campaign_members WHERE user_id = auth.uid())
   );
+
+-- Permette la ricerca della campagna tramite codice per il join (Discovery)
+CREATE POLICY "campaign_discovery" ON campaigns
+  FOR SELECT TO authenticated
+  USING (join_code IS NOT NULL);
 
 -- ventures: DM vede tutte nella sua campagna, Player solo le sue
 CREATE POLICY "dm_full_ventures" ON ventures
   FOR ALL USING (public.is_dm_of_campaign(campaign_id));
 
-CREATE POLICY "player_own_ventures" ON ventures
-  FOR SELECT USING (owner_user_id = auth.uid());
+CREATE POLICY "player_view_all_campaign_ventures" ON ventures
+  FOR SELECT USING (
+    campaign_id IN (SELECT campaign_id FROM campaign_members WHERE user_id = auth.uid())
+  );
 
-CREATE POLICY "player_update_directive" ON ventures
+CREATE POLICY "player_update_own_ventures" ON ventures
   FOR UPDATE USING (owner_user_id = auth.uid())
   WITH CHECK (owner_user_id = auth.uid());
 
@@ -162,9 +171,13 @@ CREATE POLICY "dm_pending_effects" ON pending_effects
     venture_id IN (SELECT v.id FROM ventures v WHERE public.is_dm_of_campaign(v.campaign_id))
   );
 
-CREATE POLICY "player_view_pending_effects" ON pending_effects
+CREATE POLICY "player_view_campaign_pending_effects" ON pending_effects
   FOR SELECT USING (
-    venture_id IN (SELECT id FROM ventures WHERE owner_user_id = auth.uid())
+    venture_id IN (
+      SELECT v.id FROM ventures v 
+      JOIN campaign_members cm ON v.campaign_id = cm.campaign_id 
+      WHERE cm.user_id = auth.uid()
+    )
   );
 
 -- cycle_reports: DM può creare/leggere, Player può solo leggere
@@ -173,7 +186,7 @@ CREATE POLICY "dm_manage_reports" ON cycle_reports
 
 CREATE POLICY "player_view_reports" ON cycle_reports
   FOR SELECT USING (
-    campaign_id IN (SELECT campaign_id FROM ventures WHERE owner_user_id = auth.uid())
+    campaign_id IN (SELECT campaign_id FROM campaign_members WHERE user_id = auth.uid())
   );
 
 -- lore_documents: solo DM
@@ -231,4 +244,4 @@ CREATE POLICY "player_reactivate_membership" ON public.campaign_members
   FOR UPDATE USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
-ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT active CHECK (status IN (active,archived));
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','archived'));
