@@ -136,6 +136,13 @@ GRANT EXECUTE ON FUNCTION public.is_dm_of_campaign(UUID) TO authenticated;
 CREATE POLICY "user_own_profile" ON user_profiles
   FOR ALL USING (id = auth.uid());
 
+-- user_profiles: il DM può leggere i profili dei player per assegnare le ventures
+CREATE POLICY "dm_view_player_profiles" ON user_profiles
+  FOR SELECT USING (
+    role = 'player'
+    AND EXISTS (SELECT 1 FROM campaigns WHERE dm_user_id = auth.uid())
+  );
+
 -- campaigns: il DM vede le proprie, i player vedono quelle a cui sono associati
 CREATE POLICY "dm_own_campaigns" ON campaigns
   FOR ALL USING (dm_user_id = auth.uid());
