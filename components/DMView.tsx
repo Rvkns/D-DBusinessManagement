@@ -55,10 +55,14 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
                 return;
             }
 
-            const { data: profileData } = await supabase.from('user_profiles').select('id, display_name').in('id', memberIds);
+            const { data: profileData } = await supabase.from('user_profiles').select('id, display_name, email').in('id', memberIds);
             const playerNameById = new Map<string, string>((profileData || []).map(p => [p.id as string, (p.display_name as string) || "Sconosciuto"]));
             
-            setPlayers((profileData || []).map(p => ({ id: p.id, email: p.display_name || "Sconosciuto" })));
+            setPlayers((profileData || []).map(p => ({ 
+                id: p.id, 
+                email: p.email || p.display_name || "Sconosciuto",
+                nickname: p.display_name || "Sconosciuto"
+            })));
             setMembers((membersData || []).map(m => ({
                 user_id: m.user_id,
                 status: m.status,
@@ -583,7 +587,7 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
                                 <input type="text" placeholder="Tipo" className="bg-black/40 border border-drow-700 p-2 text-white rounded focus:outline-none focus:border-drow-500" value={newVenture.type || ""} onChange={e => setNewVenture({...newVenture, type: e.target.value})} />
                                 <select className="bg-black/40 border border-drow-700 p-2 text-white rounded focus:outline-none focus:border-drow-500" value={newVenture.owner_user_id || ""} onChange={e => setNewVenture({...newVenture, owner_user_id: e.target.value})}>
                                     <option value="">Seleziona Player</option>
-                                    {players.map(p => <option key={p.id} value={p.id}>{p.email}</option>)}
+                                    {players.map(p => <option key={p.id} value={p.id}>{p.nickname} ({p.email})</option>)}
                                 </select>
                                 <input type="text" placeholder="Manager PNG" className="bg-black/40 border border-drow-700 p-2 text-white rounded focus:outline-none focus:border-drow-500" value={newVenture.manager || ""} onChange={e => setNewVenture({...newVenture, manager: e.target.value})} />
                             </div>

@@ -16,8 +16,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export interface DbUserProfile {
   id: string;
   role: 'dm' | 'player';
-  display_name: string | null;
-  character_name: string | null;
+  display_name: string;
+  email?: string;
+  character_name?: string;
   created_at: string;
 }
 

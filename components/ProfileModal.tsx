@@ -65,9 +65,16 @@ export default function ProfileModal({ isOpen, onClose, profile, onUpdate }: Pro
                             />
                             <User className="absolute right-3 top-1/2 -translate-y-1/2 text-drow-800" size={18} />
                         </div>
-                        <p className="text-[10px] text-drow-500 mt-1.5 italic">
-                            Questo è il nome che vedranno il DM e gli altri membri del party.
-                        </p>
+                        <div className="flex justify-between mt-1.5 px-1">
+                            <p className="text-[10px] text-drow-500 italic">
+                                Visibile a tutto il party.
+                            </p>
+                            {profile.email && (
+                                <p className="text-[10px] text-drow-600 font-mono">
+                                    Account: {profile.email}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     <div>
