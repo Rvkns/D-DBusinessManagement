@@ -45,8 +45,6 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
     const [ventureFormError, setVentureFormError] = useState<string | null>(null);
     const [toast, setToast] = useState<{message: string; type: 'success' | 'error' | 'info'} | null>(null);
 
-    // Load everything from Supabase
-    useEffect(() => {
     const loadPlayers = async () => {
         try {
             const { data: membersData } = await supabase.from('campaign_members').select('user_id,status').eq('campaign_id', selectedCampaignId);
@@ -102,6 +100,7 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
                         manager: v.manager,
                         description: v.description,
                         baseIncome: v.base_income,
+                        base_cost: v.base_cost, // Correcting potential property mismatch if any, though keeping consistency
                         baseCost: v.base_cost,
                         efficiency: v.efficiency,
                         loyalty: v.loyalty,
@@ -119,7 +118,7 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
                             remainingCycles: pe.remaining_cycles
                         }))
                     }));
-                    setState(prev => ({ ...prev, ventures: mappedVentures }));
+                    setState(prev => ({ ...prev, ventures: mappedVentures as Venture[] }));
                 }
 
                 // 4. Fetch History
