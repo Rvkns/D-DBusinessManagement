@@ -47,6 +47,35 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
 
     // Load everything from Supabase
     useEffect(() => {
+    const loadPlayers = async () => {
+        try {
+            const { data: membersData } = await supabase.from('campaign_members').select('user_id,status').eq('campaign_id', selectedCampaignId);
+            const memberIds = (membersData || []).map(m => m.user_id);
+            if (memberIds.length === 0) {
+                setPlayers([]);
+                setMembers([]);
+                return;
+            }
+
+            const { data: profileData } = await supabase.from('user_profiles').select('id, display_name').in('id', memberIds);
+            const playerNameById = new Map<string, string>((profileData || []).map(p => [p.id as string, (p.display_name as string) || "Sconosciuto"]));
+            
+            setPlayers((profileData || []).map(p => ({ id: p.id, email: p.display_name || "Sconosciuto" })));
+            setMembers((membersData || []).map(m => ({
+                user_id: m.user_id,
+                status: m.status,
+                display_name: playerNameById.get(m.user_id) || 'Sconosciuto'
+            })));
+
+            return playerNameById;
+        } catch (error) {
+            console.error('Errore caricamento player:', error);
+            return new Map();
+        }
+    };
+
+    // Load everything from Supabase
+    useEffect(() => {
         const fetchData = async () => {
             try {
                 // 1. Fetch Campaign Info
@@ -58,29 +87,18 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
                     setCampaignName(campaign.name || 'Campagna');
                 }
 
-                // 2. Fetch Players for assignment (needed before ventures mapping)
-                const { data: members } = await supabase.from('campaign_members').select('user_id,status').eq('campaign_id', selectedCampaignId);
-                const memberIds = (members || []).map(m => m.user_id);
-                const { data: profileData } = memberIds.length > 0
-                    ? await supabase.from('user_profiles').select('id, display_name').in('id', memberIds)
-                    : { data: [] as any };
-
-                const playerNameById = new Map<string, string>((profileData || []).map(p => [p.id as string, (p.display_name as string) || "Sconosciuto"]));
-                setPlayers((profileData || []).map(p => ({ id: p.id, email: p.display_name || "Sconosciuto" })));
-                setMembers((members || []).map(m => ({
-                    user_id: m.user_id,
-                    status: m.status,
-                    display_name: playerNameById.get(m.user_id) || 'Sconosciuto'
-                })));
+                // 2. Fetch Players & Members
+                const playerNameById = await loadPlayers();
 
                 // 3. Fetch Ventures
                 const { data: ventures } = await supabase.from('ventures').select('*, pending_effects(*)').eq('campaign_id', selectedCampaignId);
                 if (ventures) {
                     const mappedVentures: Venture[] = ventures.map(v => ({
                         id: v.id,
+                        owner_user_id: v.owner_user_id,
                         name: v.name,
                         type: v.type,
-                        partyMember: playerNameById.get(v.owner_user_id) || "",
+                        partyMember: playerNameById?.get(v.owner_user_id) || "Sconosciuto",
                         manager: v.manager,
                         description: v.description,
                         baseIncome: v.base_income,
@@ -105,27 +123,27 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
                 }
 
                 // 4. Fetch History
-            const { data: history } = await supabase.from('cycle_reports').select('*').eq('campaign_id', selectedCampaignId).order('cycle_number', { ascending: false });
-            if (history) {
-                setState(prev => ({ ...prev, history: history.map(h => ({
-                    cycleNumber: h.cycle_number,
-                    date: new Date(h.created_at).toLocaleDateString(),
-                    totalGoldChange: h.total_gold_change,
-                    ventureReports: h.venture_reports,
-                    shadowReport: h.shadow_report,
-                    narrativeDilemma: h.narrative_dilemma,
-                    fullRawText: h.full_raw_text,
-                    diceRolls: h.dice_rolls
-                })) }));
-            }
+                const { data: history } = await supabase.from('cycle_reports').select('*').eq('campaign_id', selectedCampaignId).order('cycle_number', { ascending: false });
+                if (history) {
+                    setState(prev => ({ ...prev, history: history.map(h => ({
+                        cycleNumber: h.cycle_number,
+                        date: new Date(h.created_at).toLocaleDateString(),
+                        totalGoldChange: h.total_gold_change,
+                        ventureReports: h.venture_reports,
+                        shadowReport: h.shadow_report,
+                        narrativeDilemma: h.narrative_dilemma,
+                        fullRawText: h.full_raw_text,
+                        diceRolls: h.dice_rolls
+                    })) }));
+                }
 
-            // 5. Fetch Lore
-            const { data: lore } = await supabase.from('lore_documents').select('*').eq('campaign_id', selectedCampaignId);
-            if (lore) {
-                setState(prev => ({ ...prev, loreDocuments: lore }));
-            }
+                // 5. Fetch Lore
+                const { data: lore } = await supabase.from('lore_documents').select('*').eq('campaign_id', selectedCampaignId);
+                if (lore) {
+                    setState(prev => ({ ...prev, loreDocuments: lore }));
+                }
 
-        } catch (error) {
+            } catch (error) {
                 console.error('Errore caricamento dati DM:', error);
                 setState(prev => ({ ...prev, lastError: 'Errore nel caricamento dati campagna.' }));
             }
@@ -361,6 +379,7 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
         const venture = state.ventures.find(v => v.id === id);
         if (venture) {
             setNewVenture(venture);
+            loadPlayers(); // Refresh players before showing modal
             setShowAddModal(true);
         }
     };
@@ -528,7 +547,7 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
                     <div className="space-y-4">
                         <div className="flex justify-between items-end pb-2 border-b border-white/5">
                             <h2 className="text-lg font-serif font-bold text-gray-200">Asset Attivi ({state.ventures.length})</h2>
-                            <button onClick={() => { setVentureFormError(null); setShowAddModal(true); }} className="flex items-center space-x-1 px-3 py-1.5 bg-drow-700/50 text-drow-100 rounded border border-drow-600 text-sm font-bold"><Plus size={16} /> <span>Nuova Impresa</span></button>
+                            <button onClick={() => { setVentureFormError(null); loadPlayers(); setShowAddModal(true); }} className="flex items-center space-x-1 px-3 py-1.5 bg-drow-700/50 text-drow-100 rounded border border-drow-600 text-sm font-bold"><Plus size={16} /> <span>Nuova Impresa</span></button>
                         </div>
                         <div className="grid gap-5">
                             {state.ventures.map(v => <VentureCard key={v.id} venture={v} onDelete={deleteVenture} onEdit={handleEditVenture} />)}
