@@ -9,7 +9,7 @@ import { parseFile } from '../services/fileParsing';
 import { runFullSimulation } from '../utils/simulationEngine';
 import { supabase } from '../services/supabaseClient';
 import { signOut } from '../services/authService';
-import { Plus, Play, History, Skull, RotateCcw, Gem, Upload, FileText, Trash2, BookOpen, ChevronDown, LogOut, Users, Settings, UserX } from 'lucide-react';
+import { Plus, Play, History, Skull, RotateCcw, Gem, Upload, FileText, Trash2, BookOpen, LogOut, Settings } from 'lucide-react';
 
 interface DMViewProps {
     campaignId: string;
@@ -61,7 +61,7 @@ export default function DMView({ campaignId }: DMViewProps) {
                     ? await supabase.from('user_profiles').select('id, display_name').in('id', memberIds)
                     : { data: [] as any };
 
-                const playerNameById = new Map((profileData || []).map(p => [p.id, p.display_name || "Sconosciuto"]));
+                const playerNameById = new Map<string, string>((profileData || []).map(p => [p.id as string, (p.display_name as string) || "Sconosciuto"]));
                 setPlayers((profileData || []).map(p => ({ id: p.id, email: p.display_name || "Sconosciuto" })));
                 setMembers((members || []).map(m => ({
                     user_id: m.user_id,
@@ -267,7 +267,7 @@ export default function DMView({ campaignId }: DMViewProps) {
         if (!e.target.files || e.target.files.length === 0) return;
         setIsUploading(true);
         try {
-            for (const file of Array.from(e.target.files)) {
+            for (const file of Array.from(e.target.files as FileList) as File[]) {
                 const doc = await parseFile(file);
                 const { data } = await supabase.from('lore_documents').insert({
                     campaign_id: selectedCampaignId,
@@ -398,9 +398,9 @@ export default function DMView({ campaignId }: DMViewProps) {
                                 <select value={selectedCampaignId} onChange={(e) => setSelectedCampaignId(e.target.value)} className="bg-black/40 border border-drow-700 rounded px-2 py-1 text-drow-100">
                                     {dmCampaigns.map(c => <option key={c.id} value={c.id} className="bg-drow-900">{c.name}</option>)}
                                 </select>
-                                <button onClick={createNewCampaign} className="bg-drow-700 hover:bg-drow-600 px-2 py-1 rounded text-white">Nuova Campagna</button>
-                                <span className="text-drow-300">Codice: <span className="font-bold text-drow-100">{campaignJoinCode || 'N/D'}</span></span>
-                                <button onClick={regenerateJoinCode} className="bg-drow-700 hover:bg-drow-600 px-2 py-1 rounded text-white">Rigenera Codice</button>
+                                <button onClick={createNewCampaign} className="bg-drow-700 hover:bg-drow-600 px-2 py-1 rounded text-white transition-colors">Nuova Campagna</button>
+                                <span className="text-drow-300">Codice invito: <span className="font-bold text-drow-100 tracking-widest">{campaignJoinCode || 'N/D'}</span></span>
+                                <button onClick={regenerateJoinCode} className="bg-drow-700 hover:bg-drow-600 px-2 py-1 rounded text-white transition-colors">Rigenera Codice</button>
                                 <button onClick={() => setShowCampaignModal(true)} className="bg-drow-800 hover:bg-drow-700 px-2 py-1 rounded text-white flex items-center gap-1"><Settings size={12} /> Gestisci</button>
                             </div>
                         </div>
