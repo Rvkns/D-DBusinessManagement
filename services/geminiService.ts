@@ -129,7 +129,9 @@ export const generateSimulationCycle = async (
             economicResult: aiReport.economicResult,
             netGold: calc.netGold, // FORCE our calculated gold
             logisticsStatus: aiReport.logisticsStatus,
-            politicalImpact: aiReport.politicalImpact
+            politicalImpact: aiReport.politicalImpact,
+            eventName: calc.event.name,
+            eventCategory: calc.event.category
         };
     });
 

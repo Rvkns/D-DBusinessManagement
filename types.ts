@@ -70,6 +70,8 @@ export interface VentureResult {
   netGold: number;
   logisticsStatus: string; // Narrative text
   politicalImpact: string; // Narrative text
+  eventName?: string;
+  eventCategory?: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | 'CRITICAL';
 }
 
 export interface CycleReport {
