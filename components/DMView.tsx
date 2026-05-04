@@ -40,6 +40,7 @@ export default function DMView({ campaignId }: DMViewProps) {
     const [campaignName, setCampaignName] = useState('');
     const [showCampaignModal, setShowCampaignModal] = useState(false);
     const [members, setMembers] = useState<{user_id: string; display_name: string; status: string}[]>([]);
+    const [ventureFormError, setVentureFormError] = useState<string | null>(null);
 
     // Load everything from Supabase
     useEffect(() => {
@@ -295,7 +296,23 @@ export default function DMView({ campaignId }: DMViewProps) {
     };
 
     const handleSaveVenture = async () => {
-        if (!newVenture.name || !newVenture.type) return;
+        if (!newVenture.name?.trim()) {
+            setVentureFormError("Inserisci un nome per l'impresa.");
+            return;
+        }
+        if (!newVenture.type?.trim()) {
+            setVentureFormError("Inserisci una tipologia per l'impresa.");
+            return;
+        }
+        if (!newVenture.owner_user_id) {
+            setVentureFormError('Seleziona un player proprietario.');
+            return;
+        }
+        if ((newVenture.baseIncome ?? 0) < 0 || (newVenture.baseCost ?? 0) < 0) {
+            setVentureFormError('Entrate e Costi base non possono essere negativi.');
+            return;
+        }
+        setVentureFormError(null);
 
         const ventureData = {
             campaign_id: selectedCampaignId,
@@ -496,7 +513,7 @@ export default function DMView({ campaignId }: DMViewProps) {
                     <div className="space-y-4">
                         <div className="flex justify-between items-end pb-2 border-b border-white/5">
                             <h2 className="text-lg font-serif font-bold text-gray-200">Asset Attivi ({state.ventures.length})</h2>
-                            <button onClick={() => setShowAddModal(true)} className="flex items-center space-x-1 px-3 py-1.5 bg-drow-700/50 text-drow-100 rounded border border-drow-600 text-sm font-bold"><Plus size={16} /> <span>Nuova Impresa</span></button>
+                            <button onClick={() => { setVentureFormError(null); setShowAddModal(true); }} className="flex items-center space-x-1 px-3 py-1.5 bg-drow-700/50 text-drow-100 rounded border border-drow-600 text-sm font-bold"><Plus size={16} /> <span>Nuova Impresa</span></button>
                         </div>
                         <div className="grid gap-5">
                             {state.ventures.map(v => <VentureCard key={v.id} venture={v} onDelete={deleteVenture} onEdit={handleEditVenture} />)}
@@ -527,24 +544,26 @@ export default function DMView({ campaignId }: DMViewProps) {
                             <button onClick={() => setShowAddModal(false)}>&times;</button>
                         </div>
                         <div className="p-8 space-y-4">
+                            <p className="text-xs text-drow-300">Compila i campi chiave: proprietario, economia base e contesto narrativo. Questo migliora qualità simulazione e report.</p>
                             <div className="grid grid-cols-2 gap-4">
-                                <input type="text" placeholder="Nome" className="bg-black/40 border border-drow-700 p-2 text-white" value={newVenture.name || ""} onChange={e => setNewVenture({...newVenture, name: e.target.value})} />
-                                <input type="text" placeholder="Tipo" className="bg-black/40 border border-drow-700 p-2 text-white" value={newVenture.type || ""} onChange={e => setNewVenture({...newVenture, type: e.target.value})} />
-                                <select className="bg-black/40 border border-drow-700 p-2 text-white" value={newVenture.owner_user_id || ""} onChange={e => setNewVenture({...newVenture, owner_user_id: e.target.value})}>
+                                <input type="text" placeholder="Nome" className="bg-black/40 border border-drow-700 p-2 text-white rounded focus:outline-none focus:border-drow-500" value={newVenture.name || ""} onChange={e => setNewVenture({...newVenture, name: e.target.value})} />
+                                <input type="text" placeholder="Tipo" className="bg-black/40 border border-drow-700 p-2 text-white rounded focus:outline-none focus:border-drow-500" value={newVenture.type || ""} onChange={e => setNewVenture({...newVenture, type: e.target.value})} />
+                                <select className="bg-black/40 border border-drow-700 p-2 text-white rounded focus:outline-none focus:border-drow-500" value={newVenture.owner_user_id || ""} onChange={e => setNewVenture({...newVenture, owner_user_id: e.target.value})}>
                                     <option value="">Seleziona Player</option>
                                     {players.map(p => <option key={p.id} value={p.id}>{p.email}</option>)}
                                 </select>
-                                <input type="text" placeholder="Manager PNG" className="bg-black/40 border border-drow-700 p-2 text-white" value={newVenture.manager || ""} onChange={e => setNewVenture({...newVenture, manager: e.target.value})} />
+                                <input type="text" placeholder="Manager PNG" className="bg-black/40 border border-drow-700 p-2 text-white rounded focus:outline-none focus:border-drow-500" value={newVenture.manager || ""} onChange={e => setNewVenture({...newVenture, manager: e.target.value})} />
                             </div>
-                            <textarea placeholder="Descrizione" className="w-full bg-black/40 border border-drow-700 p-2 text-white h-20" value={newVenture.description || ""} onChange={e => setNewVenture({...newVenture, description: e.target.value})} />
+                            <textarea placeholder="Descrizione" className="w-full bg-black/40 border border-drow-700 p-2 text-white h-20 rounded focus:outline-none focus:border-drow-500" value={newVenture.description || ""} onChange={e => setNewVenture({...newVenture, description: e.target.value})} />
                             <div className="grid grid-cols-2 gap-4">
-                                <input type="number" placeholder="Entrate Base" className="bg-black/40 border border-drow-700 p-2 text-white" value={newVenture.baseIncome || ""} onChange={e => setNewVenture({...newVenture, baseIncome: parseInt(e.target.value)})} />
-                                <input type="number" placeholder="Costo Base" className="bg-black/40 border border-drow-700 p-2 text-white" value={newVenture.baseCost || ""} onChange={e => setNewVenture({...newVenture, baseCost: parseInt(e.target.value)})} />
+                                <input type="number" min={0} placeholder="Entrate Base" className="bg-black/40 border border-drow-700 p-2 text-white rounded focus:outline-none focus:border-drow-500" value={newVenture.baseIncome || ""} onChange={e => setNewVenture({...newVenture, baseIncome: parseInt(e.target.value)})} />
+                                <input type="number" min={0} placeholder="Costo Base" className="bg-black/40 border border-drow-700 p-2 text-white rounded focus:outline-none focus:border-drow-500" value={newVenture.baseCost || ""} onChange={e => setNewVenture({...newVenture, baseCost: parseInt(e.target.value)})} />
                             </div>
+                        {ventureFormError && <p className="text-sm text-red-400">{ventureFormError}</p>}
                         </div>
                         <div className="p-5 flex justify-end gap-2 border-t border-drow-700">
                             <button onClick={() => setShowAddModal(false)} className="px-4 py-2 text-gray-400">Annulla</button>
-                            <button onClick={handleSaveVenture} className="px-6 py-2 bg-drow-600 text-white font-bold rounded">Salva</button>
+                            <button onClick={handleSaveVenture} className="px-6 py-2 bg-drow-600 hover:bg-drow-500 text-white font-bold rounded transition-colors">Salva</button>
                         </div>
                     </div>
                 </div>
