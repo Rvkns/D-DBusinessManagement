@@ -287,8 +287,9 @@ export function applyModifiers(roll: number, venture: Venture, directive: Direct
     if (venture.loyalty > 80) modifiedRoll += 8;
     if (venture.loyalty < 40) modifiedRoll -= 12;
     
-    if (venture.notoriety > 70) modifiedRoll -= 15;
-    if (venture.notoriety > 85) modifiedRoll -= 10; // Cumulative with > 70 for -25 total
+    if (venture.notoriety > 50) {
+        modifiedRoll += -Math.floor((venture.notoriety - 50) / 5);
+    }
 
     // Party Level scaling (e.g. higher level characters attract slightly more dangerous events if notoriety is high, 
     // or maybe they just handle things better. Let's say high level adds a slight buffer against disasters)
@@ -340,24 +341,23 @@ export function resolveEvent(modifiedRoll: number): SimulationEvent {
 }
 
 export function calculateProfit(venture: Venture, directive: Directive, event: SimulationEvent): number {
-    // 1. Calculate Base Profit
-    const baseProfit = (venture.baseIncome * (venture.efficiency / 100)) - venture.baseCost;
+    if (venture.efficiency < 10) {
+        return Math.round(-(venture.baseCost * 0.3)); // SUSPENDED STATE
+    }
 
-    // 2. Apply Pending Effects that modify Gold (None currently defined, but good for future proofing)
-    
-    // 3. Apply Directive Effects
-    let directiveProfit = baseProfit;
+    // Multipliers apply only to gross income, never to costs
+    let grossIncome = venture.baseIncome * (venture.efficiency / 100);
     if (directive.effects.goldMultiplier !== undefined) {
-        directiveProfit *= directive.effects.goldMultiplier;
+        grossIncome *= directive.effects.goldMultiplier;
     }
-    if (directive.effects.goldFixed !== undefined) {
-        directiveProfit += directive.effects.goldFixed;
+    if (event.effects.goldMultiplier !== undefined) {
+        grossIncome *= event.effects.goldMultiplier;
     }
 
-    // 4. Apply Event Effects
-    let finalProfit = directiveProfit;
-    if (event.effects.goldMultiplier !== undefined) {
-        finalProfit *= event.effects.goldMultiplier;
+    // Subtract cost once, then apply fixed bonuses/penalties
+    let finalProfit = grossIncome - venture.baseCost;
+    if (directive.effects.goldFixed !== undefined) {
+        finalProfit += directive.effects.goldFixed;
     }
     if (event.effects.goldFixed !== undefined) {
         finalProfit += event.effects.goldFixed;
