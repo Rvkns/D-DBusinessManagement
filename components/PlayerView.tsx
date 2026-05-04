@@ -23,6 +23,9 @@ export default function PlayerView({ ventures, history, onSelectDirective, onLoc
     };
 
     const latestReport = history.length > 0 ? history[0] : null;
+    const lockedCount = ventures.filter(v => v.directiveLocked).length;
+    const missingDirectiveCount = ventures.filter(v => !v.currentDirective).length;
+    const readyForCycle = ventures.length > 0 && lockedCount === ventures.length;
 
     return (
         <div className="min-h-screen font-sans selection:bg-drow-500 selection:text-white pb-10">
@@ -61,9 +64,23 @@ export default function PlayerView({ ventures, history, onSelectDirective, onLoc
                 ) : (
                     <>
                         <section>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                                <div className="rounded-lg border border-drow-700 bg-black/30 p-3">
+                                    <p className="text-xs uppercase tracking-wide text-drow-400">Direttive Bloccate</p>
+                                    <p className="text-xl font-bold text-white">{lockedCount}/{ventures.length}</p>
+                                </div>
+                                <div className="rounded-lg border border-drow-700 bg-black/30 p-3">
+                                    <p className="text-xs uppercase tracking-wide text-drow-400">Da Impostare</p>
+                                    <p className="text-xl font-bold text-white">{missingDirectiveCount}</p>
+                                </div>
+                                <div className={`rounded-lg border p-3 ${readyForCycle ? 'border-emerald-500/40 bg-emerald-950/30' : 'border-amber-500/40 bg-amber-950/20'}`}>
+                                    <p className="text-xs uppercase tracking-wide text-drow-300">Stato Turno</p>
+                                    <p className={`text-sm font-bold ${readyForCycle ? 'text-emerald-300' : 'text-amber-300'}`}>{readyForCycle ? 'Pronto per il prossimo ciclo' : 'Completare direttive e lock'}</p>
+                                </div>
+                            </div>
                             <div className="mb-4 p-3 rounded-lg border border-drow-700 bg-black/30 text-sm text-drow-200 flex items-start gap-2">
                                 <ShieldCheck size={16} className="mt-0.5 text-drow-400" />
-                                <p><strong>Prossima azione consigliata:</strong> scegli una direttiva per ogni attività e blocca le scelte prima del prossimo ciclo.</p>
+                                <p><strong>Prossima azione consigliata:</strong> 1) scegli una direttiva per ogni attività, 2) blocca la scelta. Quando tutte sono bloccate il turno è pronto.</p>
                             </div>
                             <h2 className="text-2xl font-serif font-bold text-white mb-6 tracking-wide border-b border-drow-800 pb-2">
                                 I Tuoi Ordini
