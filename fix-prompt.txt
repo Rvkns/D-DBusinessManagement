@@ -1,0 +1,58 @@
+Sei un esperto TypeScript. Lavora sul file `utils/simulationEngine.ts` di questo progetto.
+Devi applicare tre fix precisi. Non toccare nulla al di fuori delle funzioni indicate.
+
+---
+
+### FIX 1 — Bug goldMultiplier su profitti negativi (PRIORITÀ ALTA)
+**Problema:** In `calculateProfit`, il `goldMultiplier` degli eventi si applica
+all'intero `directiveProfit`, inclusi i valori negativi. Una venture già in perdita
+(es. -200 MO) colpita da DISASTER (multiplier 0.2) ottiene -40 MO invece di peggiorare.
+Il moltiplicatore riduce le perdite anziché amplificare i danni.
+
+**Fix:** Separa il calcolo. Il `goldMultiplier` deve applicarsi SOLO alla parte di
+reddito lordo (baseIncome × efficiency/100), mentre il baseCost rimane fisso.
+Poi somma direttiva e evento come fixed gold separatamente.
+
+La formula corretta da implementare è:
+  grossIncome = venture.baseIncome * (venture.efficiency / 100)
+  // applica goldMultiplier di direttiva e evento separatamente al grossIncome
+  // poi sottrai baseCost una sola volta alla fine
+  // poi aggiungi tutti i goldFixed (direttiva + evento)
+
+Assicurati che il valore restituito sia sempre `Math.round(finalProfit)`.
+
+---
+
+### FIX 2 — Venture sospesa a efficienza zero (PRIORITÀ MEDIA)
+**Problema:** Il `baseCost` viene sottratto anche a efficiency = 0,
+facendo perdere oro a una venture di fatto inattiva senza alcuna comunicazione.
+
+**Fix:** All'inizio di `calculateProfit`, aggiungi una guardia:
+  se `venture.efficiency < 10`, restituisci direttamente `-(venture.baseCost * 0.3)`.
+  Questo rappresenta i "costi minimi di mantenimento" di una struttura sospesa
+  (utenze, affitto, guardia minima), circa il 30% del costo base.
+  Non applicare eventi né direttive economiche in questo stato.
+
+Aggiungi anche un commento `// SUSPENDED STATE` per chiarezza.
+
+---
+
+### FIX 3 — Notorietà: ammorbidisci la doppia soglia (PRIORITÀ BASSA)
+**Problema:** In `applyModifiers`, la penalità a notorietà è un doppio cliff:
+  > 70 → -15, e se > 85 → -10 cumulativi (totale -25).
+Il salto da 70 a 71 è troppo brusco e non percepibile come graduale dai giocatori.
+
+**Fix:** Sostituisci la logica delle soglie fisse con una penalità lineare
+che scala tra 50 e 100:
+  se notoriety > 50:
+    notorietyPenalty = -Math.floor((venture.notoriety - 50) / 5)
+    // Ogni 5 punti sopra 50 = -1 al roll, fino a un massimo di -10 a notoriety 100
+  applica notorietyPenalty al modifiedRoll
+
+Rimuovi le due condizioni `if (venture.notoriety > 70)` e `if (venture.notoriety > 85)`
+esistenti e sostituiscile con questa logica.
+
+---
+
+Dopo ogni fix, mostrami la funzione modificata completa prima di procedere al successivo.
+Non modificare le firme delle funzioni né i tipi esportati.
