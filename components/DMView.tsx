@@ -10,13 +10,14 @@ import { parseFile } from '../services/fileParsing';
 import { runFullSimulation } from '../utils/simulationEngine';
 import { supabase } from '../services/supabaseClient';
 import { signOut } from '../services/authService';
-import { Plus, Play, History, Skull, RotateCcw, Gem, Upload, FileText, Trash2, BookOpen, LogOut, Settings } from 'lucide-react';
+import { Plus, Play, History, Skull, RotateCcw, Gem, Upload, FileText, Trash2, BookOpen, LogOut, Settings, UserCircle } from 'lucide-react';
 
 interface DMViewProps {
     campaignId: string;
+    onOpenProfile: () => void;
 }
 
-export default function DMView({ campaignId }: DMViewProps) {
+export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
     const [selectedCampaignId, setSelectedCampaignId] = useState(campaignId);
     const [dmCampaigns, setDmCampaigns] = useState<{id: string; name: string; join_code: string | null}[]>([]);
     const [state, setState] = useState<SimulationState>({
@@ -456,10 +457,13 @@ export default function DMView({ campaignId }: DMViewProps) {
                             </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                            <button onClick={() => signOut()} className="text-drow-500 hover:text-red-500 p-2 transition-colors">
+                            <button onClick={onOpenProfile} className="text-drow-400 hover:text-white p-2 transition-colors" title="Profilo">
+                                <UserCircle size={20} />
+                            </button>
+                            <button onClick={() => signOut()} className="text-drow-500 hover:text-red-500 p-2 transition-colors" title="Esci">
                                 <LogOut size={20} />
                             </button>
-                            <button onClick={resetCampaign} className="text-drow-600 hover:text-red-500 transition-colors p-2" title="Reset Campaign">
+                            <button onClick={resetCampaign} className="text-drow-600 hover:text-red-500 transition-colors p-2" title="Reset Campagna">
                                 <RotateCcw size={20} />
                             </button>
                         </div>

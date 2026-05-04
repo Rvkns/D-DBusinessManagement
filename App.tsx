@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, DbUserProfile } from './services/supabaseClient';
-import { getCurrentUser, getUserProfile, onAuthStateChange, signOut } from './services/authService';
+import { getCurrentUser, getUserProfile, onAuthStateChange, signOut, updateUserProfile } from './services/authService';
+import ProfileModal from './components/ProfileModal';
 import AuthScreen from './components/AuthScreen';
 import DMView from './components/DMView';
 import PlayerView from './components/PlayerView';
@@ -18,6 +19,7 @@ export default function App() {
     const [joinCode, setJoinCode] = useState('');
     const [joinLoading, setJoinLoading] = useState(false);
     const [joinError, setJoinError] = useState<string | null>(null);
+    const [showProfileModal, setShowProfileModal] = useState(false);
 
     useEffect(() => {
         const initAuth = async () => {
@@ -230,37 +232,81 @@ export default function App() {
         await supabase.from('ventures').update({ directive_locked: true }).eq('id', vId);
     };
 
+    const handleUpdateProfile = async (updates: Partial<DbUserProfile>) => {
+        if (!user?.id) return;
+        await updateUserProfile(user.id, updates);
+        const newProfile = await getUserProfile(user.id);
+        setProfile(newProfile);
+        // Refresh player data to see new name in ventures
+        if (newProfile?.role === 'player') await fetchPlayerData(user.id, newProfile);
+    };
+
     if (loading || (profile?.role === 'dm' && dmCampaignLoading)) {
         return <div className="min-h-screen bg-drow-900 flex flex-col items-center justify-center text-drow-400"><Gem className="w-12 h-12 animate-spin mb-4" /><p className="font-serif uppercase tracking-widest animate-pulse">{profile?.role === 'dm' ? 'Preparazione Trono del Master...' : 'Invocazione alle Ombre...'}</p></div>;
     }
 
     if (!user) return <AuthScreen onLoginSuccess={() => window.location.reload()} />;
-    if (profile?.role === 'dm' && activeCampaignId) return <DMView campaignId={activeCampaignId} />;
-
-    if (profile?.role === 'player') {
-        if (!activeCampaignId) {
-            return (
-                <div className="min-h-screen bg-drow-950 text-white flex items-center justify-center p-6">
-                    <div className="w-full max-w-md border border-drow-700 rounded-xl p-6 bg-black/40">
-                        <div className="flex items-center gap-2 mb-3"><LinkIcon className="w-5 h-5 text-drow-400" /><h2 className="text-xl font-serif">Unisciti a una Campagna</h2></div>
-                        <p className="text-drow-300 text-sm mb-4">Inserisci il codice che ti ha dato il DM.</p>
-                        <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="Es: DROW42" className="w-full bg-drow-950 border border-drow-700 rounded-lg px-3 py-2 mb-3" />
-                        {joinError && <p className="text-red-400 text-sm mb-3">{joinError}</p>}
-                        <button onClick={handleJoinCampaign} disabled={joinLoading} className="w-full bg-drow-600 hover:bg-drow-500 disabled:opacity-60 rounded-lg py-2 font-bold">{joinLoading ? 'Connessione...' : 'Entra nel Gruppo'}</button>
-                    </div>
-                </div>
-            );
-        }
-
-        return <PlayerView currentUserId={user.id} ventures={playerVentures} history={playerHistory} onSelectDirective={handleSelectDirective} onLockDirective={handleLockDirective} />;
-    }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center text-white bg-drow-950 p-6 text-center">
-            <Skull className="w-16 h-16 text-red-900 mb-4" />
-            <h2 className="text-2xl font-serif mb-2">Anomalia nel Profilo</h2>
-            <p className="text-drow-400 max-w-md mb-6">Non abbiamo trovato una campagna attiva o un ruolo valido per il tuo account.</p>
-            <button onClick={() => signOut().then(() => window.location.reload())} className="bg-drow-700 px-6 py-2 rounded-lg font-bold">Ritorna all'Ingresso</button>
-        </div>
+        <>
+            {profile?.role === 'dm' && activeCampaignId && (
+                <DMView campaignId={activeCampaignId} onOpenProfile={() => setShowProfileModal(true)} />
+            )}
+            
+            {profile?.role === 'player' && (
+                activeCampaignId ? (
+                    <PlayerView 
+                        currentUserId={user.id} 
+                        ventures={playerVentures} 
+                        history={playerHistory} 
+                        onSelectDirective={handleSelectDirective} 
+                        onLockDirective={handleLockDirective} 
+                        onOpenProfile={() => setShowProfileModal(true)} 
+                    />
+                ) : (
+                    <div className="min-h-screen bg-drow-950 text-white flex items-center justify-center p-6">
+                        <div className="w-full max-w-md border border-drow-700 rounded-xl p-6 bg-black/40">
+                            <div className="flex items-center gap-2 mb-3">
+                                <LinkIcon className="w-5 h-5 text-drow-400" />
+                                <h2 className="text-xl font-serif">Unisciti a una Campagna</h2>
+                            </div>
+                            <p className="text-drow-300 text-sm mb-4">Inserisci il codice che ti ha dato il DM.</p>
+                            <input 
+                                value={joinCode} 
+                                onChange={(e) => setJoinCode(e.target.value.toUpperCase())} 
+                                placeholder="Es: DROW42" 
+                                className="w-full bg-drow-950 border border-drow-700 rounded-lg px-3 py-2 mb-3" 
+                            />
+                            {joinError && <p className="text-red-400 text-sm mb-3">{joinError}</p>}
+                            <button 
+                                onClick={handleJoinCampaign} 
+                                disabled={joinLoading} 
+                                className="w-full bg-drow-600 hover:bg-drow-500 disabled:opacity-60 rounded-lg py-2 font-bold"
+                            >
+                                {joinLoading ? 'Connessione...' : 'Entra nel Gruppo'}
+                            </button>
+                        </div>
+                    </div>
+                )
+            )}
+
+            {!profile && (
+                <div className="min-h-screen flex flex-col items-center justify-center text-white bg-drow-950 p-6 text-center">
+                    <Skull className="w-16 h-16 text-red-900 mb-4" />
+                    <h2 className="text-2xl font-serif mb-2">Anomalia nel Profilo</h2>
+                    <p className="text-drow-400 max-w-md mb-6">Non abbiamo trovato una campagna attiva o un ruolo valido per il tuo account.</p>
+                    <button onClick={() => signOut().then(() => window.location.reload())} className="bg-drow-700 px-6 py-2 rounded-lg font-bold">Ritorna all'Ingresso</button>
+                </div>
+            )}
+
+            {profile && showProfileModal && (
+                <ProfileModal 
+                    isOpen={showProfileModal} 
+                    onClose={() => setShowProfileModal(false)} 
+                    profile={profile} 
+                    onUpdate={handleUpdateProfile} 
+                />
+            )}
+        </>
     );
 }

@@ -3,7 +3,7 @@ import { Venture, CycleReport, DirectiveId } from '../types';
 import VentureCard from './VentureCard';
 import DirectivePanel from './DirectivePanel';
 import SimulationReportView from './SimulationReportView';
-import { Gem, LogOut, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Gem, LogOut, ShieldCheck, AlertCircle, UserCircle } from 'lucide-react';
 import { signOut } from '../services/authService';
 
 interface PlayerViewProps {
@@ -12,9 +12,10 @@ interface PlayerViewProps {
     history: CycleReport[];
     onSelectDirective: (ventureId: string, directiveId: DirectiveId) => void;
     onLockDirective: (ventureId: string) => void;
+    onOpenProfile: () => void;
 }
 
-export default function PlayerView({ currentUserId, ventures, history, onSelectDirective, onLockDirective }: PlayerViewProps) {
+export default function PlayerView({ currentUserId, ventures, history, onSelectDirective, onLockDirective, onOpenProfile }: PlayerViewProps) {
     const handleLogout = async () => {
         try {
             await signOut();
@@ -47,13 +48,23 @@ export default function PlayerView({ currentUserId, ventures, history, onSelectD
                             <p className="text-xs text-drow-400 uppercase tracking-widest hidden md:block">Pannello Giocatore</p>
                         </div>
                     </div>
-                    <button 
-                        onClick={handleLogout}
-                        className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors p-2 rounded hover:bg-white/5"
-                    >
-                        <span className="text-sm font-bold uppercase hidden md:inline">Esci</span>
-                        <LogOut size={18} />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                        <button 
+                            onClick={onOpenProfile}
+                            className="flex items-center space-x-2 text-drow-400 hover:text-white transition-colors p-2 rounded hover:bg-white/5"
+                            title="Modifica Profilo"
+                        >
+                            <UserCircle size={20} />
+                            <span className="text-sm font-bold uppercase hidden md:inline">Profilo</span>
+                        </button>
+                        <button 
+                            onClick={handleLogout}
+                            className="flex items-center space-x-2 text-gray-400 hover:text-red-400 transition-colors p-2 rounded hover:bg-white/5"
+                        >
+                            <span className="text-sm font-bold uppercase hidden md:inline">Esci</span>
+                            <LogOut size={18} />
+                        </button>
+                    </div>
                 </div>
             </header>
 
