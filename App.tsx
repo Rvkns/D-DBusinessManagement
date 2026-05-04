@@ -7,6 +7,7 @@ import DMView from './components/DMView';
 import PlayerView from './components/PlayerView';
 import { CycleReport, Venture, DirectiveId } from './types';
 import { Gem, Skull, Link as LinkIcon } from 'lucide-react';
+import Toast from './components/Toast';
 
 export default function App() {
     const [loading, setLoading] = useState(true);
@@ -20,6 +21,7 @@ export default function App() {
     const [joinLoading, setJoinLoading] = useState(false);
     const [joinError, setJoinError] = useState<string | null>(null);
     const [showProfileModal, setShowProfileModal] = useState(false);
+    const [toast, setToast] = useState<{message: string; type: 'success' | 'error' | 'info'} | null>(null);
 
     useEffect(() => {
         const initAuth = async () => {
@@ -242,7 +244,10 @@ export default function App() {
             // Refresh player data to see new name in ventures
             if (newProfile?.role === 'player') await fetchPlayerData(user.id, newProfile);
         } catch (error: any) {
-            setToast({ message: 'Errore durante l\'aggiornamento: ' + error.message, type: 'error' });
+            console.error('Errore aggiornamento profilo:', error);
+            // Non usiamo setToast qui se vogliamo che l'errore sia gestito dal modal, 
+            // ma siccome App ha setToast, lo usiamo per gli errori fatali
+            setToast({ message: 'Errore durante l\'aggiornamento: ' + (error.message || 'Errore sconosciuto'), type: 'error' });
             throw error;
         }
     };
@@ -313,6 +318,8 @@ export default function App() {
                     onUpdate={handleUpdateProfile} 
                 />
             )}
+
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         </>
     );
 }
