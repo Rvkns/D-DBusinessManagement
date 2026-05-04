@@ -3,7 +3,7 @@ import { Venture, CycleReport, DirectiveId } from '../types';
 import VentureCard from './VentureCard';
 import DirectivePanel from './DirectivePanel';
 import SimulationReportView from './SimulationReportView';
-import { Gem, LogOut } from 'lucide-react';
+import { Gem, LogOut, ShieldCheck, AlertCircle } from 'lucide-react';
 import { signOut } from '../services/authService';
 
 interface PlayerViewProps {
@@ -54,12 +54,17 @@ export default function PlayerView({ ventures, history, onSelectDirective, onLoc
                 
                 {ventures.length === 0 ? (
                     <div className="text-center py-20 border-2 border-dashed border-drow-800 rounded-xl bg-drow-900/20 text-gray-500">
+                        <AlertCircle className="mx-auto mb-3 text-drow-500" size={28} />
                         <p className="text-lg">Non hai ancora attività assegnate.</p>
-                        <p className="text-sm opacity-50 mt-2">Attendi che il Dungeon Master ti affidi una venture.</p>
+                        <p className="text-sm opacity-70 mt-2">Attendi che il Dungeon Master ti affidi una venture.</p>
                     </div>
                 ) : (
                     <>
                         <section>
+                            <div className="mb-4 p-3 rounded-lg border border-drow-700 bg-black/30 text-sm text-drow-200 flex items-start gap-2">
+                                <ShieldCheck size={16} className="mt-0.5 text-drow-400" />
+                                <p><strong>Prossima azione consigliata:</strong> scegli una direttiva per ogni attività e blocca le scelte prima del prossimo ciclo.</p>
+                            </div>
                             <h2 className="text-2xl font-serif font-bold text-white mb-6 tracking-wide border-b border-drow-800 pb-2">
                                 I Tuoi Ordini
                             </h2>

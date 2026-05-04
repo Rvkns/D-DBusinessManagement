@@ -567,7 +567,7 @@ export default function DMView({ campaignId }: DMViewProps) {
                             <div>
                                 <h4 className="text-sm font-bold text-white mb-2">Membri</h4>
                                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                                    {members.map(m => <div key={m.user_id} className="flex items-center justify-between bg-black/40 border border-drow-800 rounded p-2"><span className="text-sm text-gray-200">{m.display_name} <span className="text-xs text-drow-400">({m.status})</span></span><button onClick={() => setMemberStatus(m.user_id, m.status === 'active' ? 'inactive' : 'active')} className="text-xs bg-drow-700 px-2 py-1 rounded">{m.status === 'active' ? 'Disattiva' : 'Attiva'}</button></div>)}
+                                    {members.length === 0 ? <p className="text-xs text-drow-400">Nessun membro ancora iscritto a questa campagna.</p> : members.map(m => <div key={m.user_id} className="flex items-center justify-between bg-black/40 border border-drow-800 rounded p-2"><span className="text-sm text-gray-200">{m.display_name} <span className="text-xs text-drow-400">({m.status})</span></span><button onClick={() => setMemberStatus(m.user_id, m.status === 'active' ? 'inactive' : 'active')} className="text-xs bg-drow-700 px-2 py-1 rounded">{m.status === 'active' ? 'Disattiva' : 'Attiva'}</button></div>)}
                                 </div>
                             </div>
                         </div>
