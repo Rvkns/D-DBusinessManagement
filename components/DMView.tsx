@@ -4,6 +4,7 @@ import VentureCard from './VentureCard';
 import SimulationReportView from './SimulationReportView';
 import ConfirmModal from './ConfirmModal';
 import DirectivePanel from './DirectivePanel';
+import Toast from './Toast';
 import { generateSimulationCycle } from '../services/geminiService';
 import { parseFile } from '../services/fileParsing';
 import { runFullSimulation } from '../utils/simulationEngine';
@@ -41,6 +42,7 @@ export default function DMView({ campaignId }: DMViewProps) {
     const [showCampaignModal, setShowCampaignModal] = useState(false);
     const [members, setMembers] = useState<{user_id: string; display_name: string; status: string}[]>([]);
     const [ventureFormError, setVentureFormError] = useState<string | null>(null);
+    const [toast, setToast] = useState<{message: string; type: 'success' | 'error' | 'info'} | null>(null);
 
     // Load everything from Supabase
     useEffect(() => {
@@ -162,14 +164,19 @@ export default function DMView({ campaignId }: DMViewProps) {
     const regenerateJoinCode = async () => {
         const code = Math.random().toString(36).slice(2, 8).toUpperCase();
         const { error } = await supabase.from('campaigns').update({ join_code: code }).eq('id', selectedCampaignId);
-        if (!error) setCampaignJoinCode(code);
+        if (!error) { setCampaignJoinCode(code); setToast({ message: 'Codice invito rigenerato.', type: 'success' }); }
     };
 
 
     const saveCampaignSettings = async () => {
-        await supabase.from('campaigns').update({ name: campaignName }).eq('id', selectedCampaignId);
+        const { error } = await supabase.from('campaigns').update({ name: campaignName }).eq('id', selectedCampaignId);
+        if (error) {
+            setToast({ message: 'Errore nel salvataggio impostazioni campagna.', type: 'error' });
+            return;
+        }
         await loadDmCampaigns();
         setShowCampaignModal(false);
+        setToast({ message: 'Impostazioni campagna salvate.', type: 'success' });
     };
 
     const setMemberStatus = async (userId: string, status: 'active' | 'inactive') => {
@@ -182,7 +189,7 @@ export default function DMView({ campaignId }: DMViewProps) {
 
     const handleSimulate = async () => {
         if (state.ventures.length === 0) {
-            alert("Aggiungi almeno un'attività per simulare.");
+            setToast({ message: "Aggiungi almeno un'attività per simulare.", type: 'info' });
             return;
         }
 
@@ -261,6 +268,8 @@ export default function DMView({ campaignId }: DMViewProps) {
                 isSimulating: false,
                 lastError: "Errore durante la simulazione. Controlla la chiave API o riprova."
             }));
+            setToast({ message: 'Simulazione fallita. Controlla configurazione e riprova.', type: 'error' });
+            return;
         }
     };
 
@@ -283,7 +292,7 @@ export default function DMView({ campaignId }: DMViewProps) {
                 }
             }
         } catch (error) {
-            alert("Errore nel caricamento.");
+            setToast({ message: 'Errore durante il caricamento file.', type: 'error' });
         } finally {
             setIsUploading(false);
             e.target.value = '';
@@ -293,6 +302,7 @@ export default function DMView({ campaignId }: DMViewProps) {
     const deleteLoreDocument = async (id: string) => {
         await supabase.from('lore_documents').delete().eq('id', id);
         setState(prev => ({ ...prev, loreDocuments: prev.loreDocuments.filter(d => d.id !== id) }));
+        setToast({ message: "Documento rimosso dall'archivio.", type: 'info' });
     };
 
     const handleSaveVenture = async () => {
@@ -343,6 +353,7 @@ export default function DMView({ campaignId }: DMViewProps) {
         }
         setShowAddModal(false);
         setNewVenture({});
+        setToast({ message: newVenture.id ? 'Impresa aggiornata.' : 'Nuova impresa creata con successo.', type: 'success' });
     };
 
     const handleEditVenture = (id: string) => {
@@ -597,6 +608,8 @@ export default function DMView({ campaignId }: DMViewProps) {
                     </div>
                 </div>
             )}
+
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
             {/* Confirm Modal */}
             <ConfirmModal
