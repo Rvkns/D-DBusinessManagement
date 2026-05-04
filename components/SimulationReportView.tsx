@@ -48,11 +48,26 @@ const SimulationReportView: React.FC<SimulationReportViewProps> = ({ report }) =
                                     {v.eventName}
                                 </span>
                             )}
-                            {report.diceRolls?.[v.ventureId] !== undefined && (
-                                <span className="flex items-center gap-1 text-xs text-gray-500 font-mono">
-                                    <Dice6 size={12} /> {report.diceRolls[v.ventureId]}
-                                </span>
-                            )}
+                            {report.diceRolls?.[v.ventureId] !== undefined && (() => {
+                                const raw = report.diceRolls![v.ventureId];
+                                const mod = v.modifiedRoll;
+                                const delta = mod !== undefined ? mod - raw : undefined;
+                                return (
+                                    <span className="flex items-center gap-1 text-xs font-mono text-gray-500">
+                                        <Dice6 size={12} />
+                                        <span>{raw}</span>
+                                        {mod !== undefined && mod !== raw && (
+                                            <>
+                                                <span className="opacity-40">→</span>
+                                                <span>{mod}</span>
+                                                <span className={delta! > 0 ? 'text-green-600' : 'text-red-600'}>
+                                                    ({delta! > 0 ? '+' : ''}{delta})
+                                                </span>
+                                            </>
+                                        )}
+                                    </span>
+                                );
+                            })()}
                         </div>
                     )}
                     <ul className="text-sm space-y-1 text-gray-300">

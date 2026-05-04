@@ -73,6 +73,7 @@ export interface VentureResult {
   politicalImpact: string; // Narrative text
   eventName?: string;
   eventCategory?: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | 'CRITICAL';
+  modifiedRoll?: number;
 }
 
 export interface CycleReport {

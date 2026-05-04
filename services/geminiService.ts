@@ -131,7 +131,8 @@ export const generateSimulationCycle = async (
             logisticsStatus: aiReport.logisticsStatus,
             politicalImpact: aiReport.politicalImpact,
             eventName: calc.event.name,
-            eventCategory: calc.event.category
+            eventCategory: calc.event.category,
+            modifiedRoll: calc.modifiedRoll
         };
     });
 
