@@ -14,15 +14,28 @@ interface SimulationReportViewProps {
 }
 
 const SimulationReportView: React.FC<SimulationReportViewProps> = ({ report }) => {
-  return (
+    const isLegacy = report.shadowReport?.includes('[PRE-RESET]');
+    const displayShadowReport = isLegacy ? report.shadowReport.replace('[PRE-RESET]', '').trim() : report.shadowReport;
+
+    return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between border-b border-drow-600 pb-4">
-        <div>
-            <h2 className="text-2xl font-serif text-drow-100 flex items-center">
-                <ScrollText className="mr-3 text-drow-400" />
-                Report Ciclo {report.cycleNumber}
-            </h2>
-            <p className="text-gray-400 text-sm">{report.date}</p>
+        <div className="flex items-center">
+            <div className="bg-drow-700/50 p-2 rounded-lg mr-3">
+                <FileText className="text-drow-100" size={24} />
+            </div>
+            <div>
+                <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-serif text-drow-100 flex items-center">
+                        <ScrollText className="mr-3 text-drow-400" />
+                        Report Ciclo {report.cycleNumber}
+                    </h2>
+                    {isLegacy && (
+                        <span className="bg-amber-950/50 border border-amber-900 text-amber-400 text-[10px] uppercase font-bold px-2 py-0.5 rounded">Pre-Reset</span>
+                    )}
+                </div>
+                <p className="text-gray-400 text-sm">{report.date}</p>
+            </div>
         </div>
         <div className={`text-2xl font-bold ${report.totalGoldChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {report.totalGoldChange > 0 ? '+' : ''}{report.totalGoldChange} mo
@@ -86,7 +99,7 @@ const SimulationReportView: React.FC<SimulationReportViewProps> = ({ report }) =
             <Eye className="mr-2" /> Rapporto dalle Ombre
         </h3>
         <p className="text-gray-300 italic leading-relaxed text-sm whitespace-pre-wrap">
-            {report.shadowReport}
+            {displayShadowReport}
         </p>
       </div>
 

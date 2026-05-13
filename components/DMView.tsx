@@ -10,7 +10,8 @@ import { parseFile } from '../services/fileParsing';
 import { runFullSimulation } from '../utils/simulationEngine';
 import { supabase } from '../services/supabaseClient';
 import { signOut } from '../services/authService';
-import { Plus, Play, History, Skull, RotateCcw, Gem, Upload, FileText, Trash2, BookOpen, LogOut, Settings, UserCircle } from 'lucide-react';
+import { Plus, Play, History, Skull, RotateCcw, Gem, Upload, FileText, Trash2, BookOpen, LogOut, Settings, UserCircle, Book } from 'lucide-react';
+import WikiView from './WikiView';
 
 interface DMViewProps {
     campaignId: string;
@@ -44,6 +45,7 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
     const [members, setMembers] = useState<{user_id: string; display_name: string; status: string}[]>([]);
     const [ventureFormError, setVentureFormError] = useState<string | null>(null);
     const [toast, setToast] = useState<{message: string; type: 'success' | 'error' | 'info'} | null>(null);
+    const [showWiki, setShowWiki] = useState(false);
 
     const loadPlayers = async () => {
         try {
@@ -405,14 +407,35 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
         setConfirmModal({
             isOpen: true,
             title: 'Reset Campagna',
-            message: 'CANCELLERAI TUTTI I DATI dei cicli fatti. Procedere?',
+            message: 'Tutti i dati verranno resettati al Ciclo 1. I report precedenti verranno conservati nello storico come [PRE-RESET]. Procedere?',
             onConfirm: async () => {
-                 await supabase.from('cycle_reports').delete().eq('campaign_id', selectedCampaignId);
+                 const { data: oldReports } = await supabase.from('cycle_reports').select('id, shadow_report').eq('campaign_id', selectedCampaignId);
+                 if (oldReports) {
+                     for (const r of oldReports) {
+                         if (!r.shadow_report.includes("[PRE-RESET]")) {
+                             await supabase.from('cycle_reports').update({ 
+                                 shadow_report: `[PRE-RESET] ${r.shadow_report}` 
+                             }).eq('id', r.id);
+                         }
+                     }
+                 }
+
                  await supabase.from('campaigns').update({ gold: 1000, cycle: 1 }).eq('id', selectedCampaignId);
+                 
+                 for (const v of state.ventures) {
+                     await supabase.from('ventures').update({
+                         efficiency: 50,
+                         loyalty: 50,
+                         notoriety: 10,
+                         current_directive: 'MAINTAIN',
+                         directive_locked: false
+                     }).eq('id', v.id);
+                 }
+
                  window.location.reload();
             },
             isDangerous: true,
-            confirmText: 'CANCELLA TUTTO'
+            confirmText: 'RESET CAMPAGNA'
         });
     };
 
@@ -555,6 +578,9 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
                             </div>
                         </div>
                         <div className="flex items-center space-x-2">
+                            <button onClick={() => setShowWiki(true)} className="text-drow-400 hover:text-white p-2 transition-colors" title="Wiki & Guida">
+                                <Book size={20} />
+                            </button>
                             <button onClick={onOpenProfile} className="text-drow-400 hover:text-white p-2 transition-colors" title="Profilo">
                                 <UserCircle size={20} />
                             </button>
@@ -728,6 +754,8 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
                     </div>
                 </div>
             )}
+
+            {showWiki && <WikiView onClose={() => setShowWiki(false)} />}
 
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
