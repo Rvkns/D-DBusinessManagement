@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Venture, CycleReport, LoreDocument, CalculatedVentureResult } from "../types";
 
 const genAI = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-const MODEL_NAME = "gemini-1.5-flash";
+const MODEL_NAME = "gemini-1.5-flash-latest";
 
 export const generateSimulationCycle = async (
   currentCycle: number,
@@ -49,33 +49,20 @@ export const generateSimulationCycle = async (
     RISULTATI DELLE ATTIVITÀ:
     ${ventureDescriptions}
 
-    ISTRUZIONI CRITICHE PER EL REPORT:
-    1. MATCHING ID: Restituisci SEMPRE lo stesso "ventureId" fornito nell'input per ogni attività.
-    2. SPIEGAZIONE ECONOMICA: Nel campo "economicResult", spiega NARRATIVAMENTE come si è arrivati al "RISULTATO NETTO FINALE". 
-       Esempio: Se c'è un grosso debito, cita furti, sabotaggi o investimenti andati male che corrispondono ai "Dati Economici Reali".
-    3. LOGISTICA E POLITICA: Racconta come lo staff ha reagito all'evento e come le Casate Drow (o altre fazioni) guardano l'attività ora.
-    4. SHADOW REPORT: Racconta rumors, movimenti di truppe, o segreti che si sussurrano nei mercati di Ched Nasad.
-    5. DILEMMA: Crea un cliffhanger o un problema urgente che i giocatori dovranno risolvere nella prossima sessione.
-
-    OUTPUT FORMAT (JSON):
-    {
-      "ventureReports": [
-        {
-          "ventureId": "ID dell'attività",
-          "economicResult": "Spiegazione narrativa dei flussi d'oro...",
-          "logisticsStatus": "Stato del personale e del manager...",
-          "politicalImpact": "Reazione delle fazioni esterne..."
-        }
-      ],
-      "shadowReport": "Rumors e segreti della città...",
-      "narrativeDilemma": "Gancio per la prossima sessione..."
-    }
+    
+    ISTRUZIONI:
+    1. Per ogni attività, scrivi un 'economicResult' che spieghi NARRATIVAMENTE il guadagno o la perdita (usa i dettagli dell'evento e del dado).
+    2. Sii oscuro, drow, e coerente con Ched Nasad.
+    3. Il 'shadowReport' deve contenere rumors e segreti basati sui risultati.
+    4. Il 'narrativeDilemma' deve essere un gancio per la prossima sessione.
+    
+    RESTITUISCI SOLO JSON.
   `;
 
   try {
     const response = await genAI.models.generateContent({
       model: MODEL_NAME,
-      contents: prompt,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
         responseMimeType: "application/json",
         responseSchema: {
