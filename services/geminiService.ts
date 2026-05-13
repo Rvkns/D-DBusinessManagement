@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Venture, CycleReport, LoreDocument, CalculatedVentureResult } from "../types";
 
 const genAI = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-const MODEL_NAME = "gemini-2.0-flash-lite";
+const MODEL_NAME = "gemini-2.0-flash";
 
 export const generateSimulationCycle = async (
   currentCycle: number,
