@@ -103,7 +103,9 @@ export const generateSimulationCycle = async (
     const jsonText = response.text;
     if (!jsonText) throw new Error("Empty response from AI");
     
-    const data = JSON.parse(jsonText);
+    // Robust JSON extraction: handle markdown code blocks if the AI includes them
+    const cleanJson = jsonText.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+    const data = JSON.parse(cleanJson);
 
     const enrichedVentureReports = calculatedResults.map(calc => {
         // Find by ID (strict) or Name (partial)
