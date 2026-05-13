@@ -409,30 +409,33 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
             title: 'Reset Campagna',
             message: 'Tutti i dati verranno resettati al Ciclo 1. I report precedenti verranno conservati nello storico come [PRE-RESET]. Procedere?',
             onConfirm: async () => {
-                 const { data: oldReports } = await supabase.from('cycle_reports').select('id, shadow_report').eq('campaign_id', selectedCampaignId);
-                 if (oldReports) {
-                     for (const r of oldReports) {
-                         if (!r.shadow_report.includes("[PRE-RESET]")) {
-                             await supabase.from('cycle_reports').update({ 
-                                 shadow_report: `[PRE-RESET] ${r.shadow_report}` 
-                             }).eq('id', r.id);
-                         }
-                     }
-                 }
+                try {
+                    const { data: oldReports } = await supabase.from('cycle_reports').select('id, shadow_report').eq('campaign_id', selectedCampaignId);
+                    if (oldReports) {
+                        const reportUpdates = oldReports
+                            .filter(r => !r.shadow_report?.includes("[PRE-RESET]"))
+                            .map(r => supabase.from('cycle_reports').update({ 
+                                shadow_report: `[PRE-RESET] ${r.shadow_report}` 
+                            }).eq('id', r.id));
+                        await Promise.all(reportUpdates);
+                    }
 
-                 await supabase.from('campaigns').update({ gold: 1000, cycle: 1 }).eq('id', selectedCampaignId);
-                 
-                 for (const v of state.ventures) {
-                     await supabase.from('ventures').update({
-                         efficiency: 50,
-                         loyalty: 50,
-                         notoriety: 10,
-                         current_directive: 'MAINTAIN',
-                         directive_locked: false
-                     }).eq('id', v.id);
-                 }
+                    await supabase.from('campaigns').update({ gold: 1000, cycle: 1 }).eq('id', selectedCampaignId);
+                    
+                    const ventureUpdates = state.ventures.map(v => supabase.from('ventures').update({
+                        efficiency: 50,
+                        loyalty: 50,
+                        notoriety: 10,
+                        current_directive: 'MAINTAIN',
+                        directive_locked: false
+                    }).eq('id', v.id));
+                    await Promise.all(ventureUpdates);
 
-                 window.location.reload();
+                    window.location.reload();
+                } catch (error) {
+                    console.error("Errore durante il reset:", error);
+                    setToast({ message: "Errore durante il reset della campagna.", type: 'error' });
+                }
             },
             isDangerous: true,
             confirmText: 'RESET CAMPAGNA'
@@ -528,7 +531,7 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
         });
     };
 
-    const currentReport = state.history.length > 0 ? state.history[0] : null;
+    const currentReport = state.history.find(h => !h.shadowReport?.includes('[PRE-RESET]')) || null;
     const levels = Array.from({ length: 20 }, (_, i) => i + 1);
 
     return (
