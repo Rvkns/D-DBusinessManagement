@@ -74,6 +74,9 @@ export interface VentureResult {
   eventName?: string;
   eventCategory?: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | 'CRITICAL';
   modifiedRoll?: number;
+  newEfficiency?: number;
+  newLoyalty?: number;
+  newNotoriety?: number;
 }
 
 export interface CycleReport {

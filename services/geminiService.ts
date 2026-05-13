@@ -127,7 +127,10 @@ export const generateSimulationCycle = async (
             politicalImpact: aiReport.politicalImpact,
             eventName: calc.event.name,
             eventCategory: calc.event.category,
-            modifiedRoll: calc.modifiedRoll
+            modifiedRoll: calc.modifiedRoll,
+            newEfficiency: calc.newEfficiency,
+            newLoyalty: calc.newLoyalty,
+            newNotoriety: calc.newNotoriety
         };
     });
 

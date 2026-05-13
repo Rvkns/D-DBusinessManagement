@@ -405,10 +405,11 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
         setConfirmModal({
             isOpen: true,
             title: 'Reset Campagna',
-            message: 'CANCELLERAI TUTTI I DATI. Procedere?',
+            message: 'CANCELLERAI TUTTI I DATI dei cicli fatti. Procedere?',
             onConfirm: async () => {
-                // Implementation for hard reset if needed
-                window.location.reload();
+                 await supabase.from('cycle_reports').delete().eq('campaign_id', selectedCampaignId);
+                 await supabase.from('campaigns').update({ gold: 1000, cycle: 1 }).eq('id', selectedCampaignId);
+                 window.location.reload();
             },
             isDangerous: true,
             confirmText: 'CANCELLA TUTTO'
@@ -427,6 +428,81 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
             ...prev,
             ventures: prev.ventures.map(v => v.id === vId ? { ...v, directiveLocked: true } : v)
         }));
+    };
+
+    const handleResetVenture = async (vId: string) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Reset Statistiche',
+            message: 'Tutte le statistiche dell\'attività verranno riportate a: Efficienza 50%, Lealtà 50%, Notorietà 10%. Confermi?',
+            onConfirm: async () => {
+                const { error } = await supabase.from('ventures').update({
+                    efficiency: 50,
+                    loyalty: 50,
+                    notoriety: 10,
+                    directive_locked: false
+                }).eq('id', vId);
+
+                if (!error) {
+                    setState(prev => ({
+                        ...prev,
+                        ventures: prev.ventures.map(v => v.id === vId ? { ...v, efficiency: 50, loyalty: 50, notoriety: 10, directiveLocked: false } : v)
+                    }));
+                    setToast({ message: 'Statistiche resettate.', type: 'success' });
+                }
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            }
+        });
+    };
+
+    const handleUndoLastCycle = async () => {
+        if (state.history.length === 0) {
+            setToast({ message: "Nessun ciclo da annullare.", type: 'info' });
+            return;
+        }
+
+        setConfirmModal({
+            isOpen: true,
+            title: 'Annulla Ultimo Ciclo',
+            message: 'Questa azione cancellerà l\'ultimo report e ripristinerà i soldi e le statistiche precedenti. Confermi?',
+            onConfirm: async () => {
+                const lastReport = state.history[0];
+                const previousReport = state.history[1]; // May be undefined
+
+                try {
+                    // 1. Revert Campaign
+                    const newGold = state.gold - lastReport.totalGoldChange;
+                    const newCycle = lastReport.cycleNumber; 
+
+                    await supabase.from('campaigns').update({ gold: newGold, cycle: newCycle }).eq('id', selectedCampaignId);
+
+                    // 2. Revert Ventures
+                    for (const v of state.ventures) {
+                        const vReport = previousReport?.ventureReports.find(vr => vr.ventureId === v.id);
+                        const prevEff = vReport?.newEfficiency ?? 50;
+                        const prevLoy = vReport?.newLoyalty ?? 50;
+                        const prevNot = vReport?.newNotoriety ?? 10;
+
+                        await supabase.from('ventures').update({ 
+                            efficiency: prevEff, 
+                            loyalty: prevLoy, 
+                            notoriety: prevNot,
+                            directive_locked: false 
+                        }).eq('id', v.id);
+                    }
+
+                    // 3. Delete Report
+                    await supabase.from('cycle_reports').delete().eq('campaign_id', selectedCampaignId).eq('cycle_number', lastReport.cycleNumber);
+
+                    // 4. Refresh
+                    window.location.reload(); 
+                } catch (err) {
+                    setToast({ message: "Errore durante l'annullamento.", type: 'error' });
+                }
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            },
+            isDangerous: true
+        });
     };
 
     const currentReport = state.history.length > 0 ? state.history[0] : null;
@@ -521,13 +597,23 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
                                 onChange={(e) => setGmNotes(e.target.value)}
                             />
                         </div>
-                        <button
-                            onClick={handleSimulate}
-                            disabled={state.isSimulating}
-                            className={`w-full py-4 rounded-lg font-bold text-lg tracking-[0.15em] uppercase transition-all flex items-center justify-center ${state.isSimulating ? 'bg-drow-900 text-drow-500 cursor-wait' : 'bg-gradient-to-r from-drow-700 to-drow-600 text-white'}`}
-                        >
-                            {state.isSimulating ? "Simulazione..." : "Avanza Ciclo (15gg)"}
-                        </button>
+                        <div className="grid grid-cols-1 gap-3">
+                            <button
+                                onClick={handleSimulate}
+                                disabled={state.isSimulating}
+                                className={`w-full py-4 rounded-lg font-bold text-lg tracking-[0.15em] uppercase transition-all flex items-center justify-center ${state.isSimulating ? 'bg-drow-900 text-drow-500 cursor-wait' : 'bg-gradient-to-r from-drow-700 to-drow-600 text-white shadow-[0_0_20px_rgba(107,59,173,0.3)]'}`}
+                            >
+                                {state.isSimulating ? "Simulazione..." : "Avanza Ciclo (15gg)"}
+                            </button>
+                            {state.history.length > 0 && (
+                                <button
+                                    onClick={handleUndoLastCycle}
+                                    className="w-full py-2 rounded-lg font-bold text-xs uppercase transition-all flex items-center justify-center bg-black/40 text-drow-400 border border-drow-800 hover:bg-drow-900/60"
+                                >
+                                    <RotateCcw size={14} className="mr-2" /> Annulla Ultimo Ciclo
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {/* Lore Files */}
@@ -553,7 +639,15 @@ export default function DMView({ campaignId, onOpenProfile }: DMViewProps) {
                             <button onClick={() => { setVentureFormError(null); loadPlayers(); setShowAddModal(true); }} className="flex items-center space-x-1 px-3 py-1.5 bg-drow-700/50 text-drow-100 rounded border border-drow-600 text-sm font-bold"><Plus size={16} /> <span>Nuova Impresa</span></button>
                         </div>
                         <div className="grid gap-5">
-                            {state.ventures.map(v => <VentureCard key={v.id} venture={v} onDelete={deleteVenture} onEdit={handleEditVenture} />)}
+                            {state.ventures.map(v => (
+                                <VentureCard 
+                                    key={v.id} 
+                                    venture={v} 
+                                    onDelete={deleteVenture} 
+                                    onEdit={handleEditVenture} 
+                                    onReset={handleResetVenture}
+                                />
+                            ))}
                         </div>
                     </div>
                 </div>

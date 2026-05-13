@@ -1,15 +1,16 @@
 import React from 'react';
 import { Venture } from '../types';
-import { Coins, Trash2, Crown, UserCog, Pencil, AlertCircle, Eye } from 'lucide-react';
+import { Coins, Trash2, Crown, UserCog, Pencil, AlertCircle, Eye, RotateCw } from 'lucide-react';
 
 interface VentureCardProps {
   venture: Venture;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
+  onReset?: (id: string) => void;
   showControls?: boolean;
 }
 
-const VentureCard: React.FC<VentureCardProps> = ({ venture, onDelete, onEdit, showControls = true }) => {
+const VentureCard: React.FC<VentureCardProps> = ({ venture, onDelete, onEdit, onReset, showControls = true }) => {
   return (
     <div className="group relative overflow-hidden rounded-xl border border-drow-700 bg-gradient-to-br from-drow-800 to-drow-900 p-5 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-drow-500/20 hover:border-drow-500">
       
@@ -133,6 +134,15 @@ const VentureCard: React.FC<VentureCardProps> = ({ venture, onDelete, onEdit, sh
                 >
                     <Pencil size={16} />
                 </button>
+                {onReset && (
+                    <button 
+                        onClick={() => onReset(venture.id)}
+                        className="p-1.5 text-amber-500/70 hover:text-amber-400 hover:bg-amber-950/50 rounded transition-all"
+                        title="Reset Statistiche (50/50/10)"
+                    >
+                        <RotateCw size={16} />
+                    </button>
+                )}
                 <button 
                     onClick={() => onDelete(venture.id)}
                     className="p-1.5 text-red-500/70 hover:text-red-400 hover:bg-red-950/50 rounded transition-all"
