@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Venture, CycleReport, LoreDocument, CalculatedVentureResult } from "../types";
 
 const genAI = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-const MODEL_NAME = "gemini-1.5-flash-latest";
+const MODEL_NAME = "gemini-1.5-flash";
 
 export const generateSimulationCycle = async (
   currentCycle: number,
@@ -63,7 +63,7 @@ export const generateSimulationCycle = async (
     const response = await genAI.models.generateContent({
       model: MODEL_NAME,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
+      generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
