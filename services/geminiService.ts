@@ -62,8 +62,8 @@ export const generateSimulationCycle = async (
   try {
     const response = await genAI.models.generateContent({
       model: MODEL_NAME,
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
+      contents: prompt,
+      config: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
