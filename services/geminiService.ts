@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Venture, CycleReport, LoreDocument, CalculatedVentureResult } from "../types";
 
 const genAI = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-const MODEL_NAME = "gemini-2.5-flash";
+const MODEL_NAME = "gemini-1.5-flash";
 
 export const generateSimulationCycle = async (
   currentCycle: number,
@@ -16,57 +16,59 @@ export const generateSimulationCycle = async (
   const ventureDescriptions = calculatedResults.map(r => {
     const v = ventures.find(vent => vent.id === r.ventureId);
     if (!v) return "";
-    return `- NOME: ${r.ventureName} (${v.type})
+    
+    // Calculate base components for AI to explain
+    const grossIncome = Math.round(v.baseIncome * (v.efficiency / 100));
+    const costs = v.baseCost;
+    
+    return `### DATA PER ATTIVITÀ [ID: ${r.ventureId}]
+      NOME: ${r.ventureName} (${v.type})
       PROPRIETARIO: ${v.partyMember || "Nessuno"} | MANAGER: ${v.manager}
-      DIRETTIVA SCELTA DAL PLAYER: ${r.directive}
-      EVENTO ACCADUTO: ${r.event.name} (${r.event.category})
-      RISULTATO NUMERICO FISSATO: ${r.netGold > 0 ? '+'+r.netGold : r.netGold} MO
-      NUOVE STATISTICHE: Efficienza ${r.newEfficiency}%, Lealtà ${r.newLoyalty}%, Notorietà ${r.newNotoriety}%
+      DIRETTIVA: ${r.directive}
+      EVENTO: ${r.event.name} (${r.event.category})
+      
+      DATI ECONOMICI REALI (DA SPIEGARE NARRATIVAMENTE):
+      - Entrate lorde (basate su efficienza): ${grossIncome} mo
+      - Costi fissi: ${costs} mo
+      - Impatto Evento/Direttiva: ${r.netGold - (grossIncome - costs)} mo
+      - RISULTATO NETTO FINALE: ${r.netGold} mo
+      
+      NUOVE STATISTICHE POST-EVENTO: Efficienza ${r.newEfficiency}%, Lealtà ${r.newLoyalty}%, Notorietà ${r.newNotoriety}%
       `;
-  }).join("\n");
-
-  const loreContext = loreDocuments.length > 0 
-    ? `\n\n--- DOCUMENTI DI TRAMA E LORE (FILE UPLOADED) ---\nUse information from these documents to create specific narrative hooks, mention specific NPCs, places, or historical events found within:\n${loreDocuments.map(d => `FILE: ${d.name}\nCONTENT:\n${d.content.substring(0, 50000)}...`).join("\n\n")}\n------------------------------------------\n`
-    : "";
+  }).join("\n---\n");
 
   const prompt = `
-    SEI IL MOTORE DI SIMULAZIONE NARRATIVA PER UNA CAMPAGNA D&D 5E (UNDERDARK/CHED NASAD).
-    I CALCOLI MATEMATICI SONO GIÀ STATI FATTI DAL SISTEMA. IL TUO COMPITO È SOLO RACCONTARE LA STORIA.
+    SEI IL MOTORE NARRATIVO PER UNA CAMPAGNA D&D 5E NELL'UNDERDARK (CHED NASAD).
+    IL TUO SCOPO È TRASFORMARE I RISULTATI MATEMATICI DI UN CICLO DI 15 GIORNI IN UNA STORIA COINVOLGENTE.
     
-    CICLO ATTUALE: ${currentCycle} (Periodo di 15 giorni)
-    LIVELLO DEL PARTY: ${partyLevel}
-    
-    NOTE DEL MASTER (CONTESTO IMMEDIATO): 
-    ${globalContext || "Nessuna nota specifica."}
+    CONTESTO:
+    Ciclo: ${currentCycle} | Livello Party: ${partyLevel}
+    Note Master: ${globalContext || "Periodo di relativa stabilità a Ched Nasad."}
+    ${loreDocuments.length > 0 ? "Usa i documenti di Lore caricati per citare PNG, luoghi e fazioni specifiche." : ""}
 
-    ${loreContext}
-
-    ELENCO ATTIVITÀ (CON RISULTATI GIÀ CALCOLATI):
+    RISULTATI DELLE ATTIVITÀ:
     ${ventureDescriptions}
 
-    REGOLE DI SIMULAZIONE NARRATIVA:
-    1. NON INVENTARE NUMERI: Usa esattamente i "RISULTATO NUMERICO FISSATO" forniti. Giustifica narrativamente PERCHÈ la venture ha guadagnato o perso quella specifica cifra.
-    2. GIUSTIFICA L'EVENTO: Se è successo un "SABOTAGGIO", inventa chi è stato (usa le Casate dell'Underdark o le info nella Lore). Se è "STAFF ECCELLENTE", racconta di un PNG specifico che si è distinto.
-    3. EFFETTO DELLA DIRETTIVA: Menziona come la "DIRETTIVA SCELTA DAL PLAYER" ha influenzato l'esito. (Es: "Poiché avete scelto di 'Stare Bassi', avete evitato il peggio della ronda...").
-    4. PROPRIETARI (PG): Rivolgiti direttamente ai Personaggi Giocanti proprietari quando descrivi le loro attività.
-    5. SCALABILITÀ: Adatta le minacce e i PNG al LIVELLO DEL PARTY (${partyLevel}).
-    6. TEMA: Mantieni un tono Dark Fantasy, incentrato su intrighi, matriarcato Drow, tradimenti e pericoli sotterranei.
+    ISTRUZIONI CRITICHE PER EL REPORT:
+    1. MATCHING ID: Restituisci SEMPRE lo stesso "ventureId" fornito nell'input per ogni attività.
+    2. SPIEGAZIONE ECONOMICA: Nel campo "economicResult", spiega NARRATIVAMENTE come si è arrivati al "RISULTATO NETTO FINALE". 
+       Esempio: Se c'è un grosso debito, cita furti, sabotaggi o investimenti andati male che corrispondono ai "Dati Economici Reali".
+    3. LOGISTICA E POLITICA: Racconta come lo staff ha reagito all'evento e come le Casate Drow (o altre fazioni) guardano l'attività ora.
+    4. SHADOW REPORT: Racconta rumors, movimenti di truppe, o segreti che si sussurrano nei mercati di Ched Nasad.
+    5. DILEMMA: Crea un cliffhanger o un problema urgente che i giocatori dovranno risolvere nella prossima sessione.
 
-    OUTPUT RICHIESTO (JSON):
-    Restituisci un JSON valido con questa struttura esatta:
+    OUTPUT FORMAT (JSON):
     {
       "ventureReports": [
         {
-          "ventureId": "ID dell'attività (copiato dall'input)",
-          "ventureName": "Nome",
-          "economicResult": "Narrazione descrittiva economica (es. 'Vendita armi schiavi +300mo')",
-          "netGold": (COPIA ESATTAMENTE IL VALORE FORNITO NELL'INPUT, numero intero),
-          "logisticsStatus": "Narrazione su staff/manager/problemi basata sull'evento",
-          "politicalImpact": "Narrazione sull'impatto politico e l'attenzione delle Casate"
+          "ventureId": "ID dell'attività",
+          "economicResult": "Spiegazione narrativa dei flussi d'oro...",
+          "logisticsStatus": "Stato del personale e del manager...",
+          "politicalImpact": "Reazione delle fazioni esterne..."
         }
       ],
-      "shadowReport": "Testo lungo: Rumors, segreti scoperti o movimenti nell'ombra generali della città.",
-      "narrativeDilemma": "Testo lungo: Una situazione critica che richiede l'attenzione del party (hook per la sessione, legato magari a un evento negativo accaduto in questo ciclo)."
+      "shadowReport": "Rumors e segreti della città...",
+      "narrativeDilemma": "Gancio per la prossima sessione..."
     }
   `;
 
@@ -85,9 +87,7 @@ export const generateSimulationCycle = async (
                 type: Type.OBJECT,
                 properties: {
                   ventureId: { type: Type.STRING },
-                  ventureName: { type: Type.STRING },
                   economicResult: { type: Type.STRING },
-                  netGold: { type: Type.INTEGER },
                   logisticsStatus: { type: Type.STRING },
                   politicalImpact: { type: Type.STRING }
                 }
@@ -105,29 +105,22 @@ export const generateSimulationCycle = async (
     
     const data = JSON.parse(jsonText);
 
-    let fullText = `## 🏢 STATO DELLE ATTIVITÀ (Ciclo ${currentCycle})\n\n`;
-    
-    // Total gold change is now calculated from our engine's exact numbers, NOT the AI's potentially flaky interpretation
-    const totalGoldChange = calculatedResults.reduce((sum, res) => sum + res.netGold, 0);
-
-    // Map AI responses back, but enforce our calculated netGold to be absolutely sure
     const enrichedVentureReports = calculatedResults.map(calc => {
-        const aiReport = data.ventureReports.find((vr: any) => vr.ventureName === calc.ventureName || vr.ventureId === calc.ventureId) || {
-            economicResult: "Nessun report dettagliato.",
-            logisticsStatus: "Tutto tranquillo.",
-            politicalImpact: "Nessun impatto."
+        // Find by ID (strict) or Name (partial)
+        const aiReport = data.ventureReports?.find((vr: any) => 
+            vr.ventureId === calc.ventureId || 
+            (vr.ventureName && vr.ventureName.toLowerCase().includes(calc.ventureName.toLowerCase()))
+        ) || {
+            economicResult: `L'attività ha registrato un movimento netto di ${calc.netGold} mo. I dettagli sono fumosi, ma i registri confermano la cifra.`,
+            logisticsStatus: "Il personale sembra scosso dagli ultimi eventi, ma la struttura regge.",
+            politicalImpact: "Le Casate osservano in silenzio, pesando il valore dei vostri asset."
         };
-
-        fullText += `### ${calc.ventureName}\n`;
-        fullText += `- **Eco:** ${aiReport.economicResult} (${calc.netGold > 0 ? '+' : ''}${calc.netGold} mo)\n`;
-        fullText += `- **Logistica:** ${aiReport.logisticsStatus}\n`;
-        fullText += `- **Pol:** ${aiReport.politicalImpact}\n\n`;
 
         return {
             ventureId: calc.ventureId,
             ventureName: calc.ventureName,
             economicResult: aiReport.economicResult,
-            netGold: calc.netGold, // FORCE our calculated gold
+            netGold: calc.netGold,
             logisticsStatus: aiReport.logisticsStatus,
             politicalImpact: aiReport.politicalImpact,
             eventName: calc.event.name,
@@ -136,25 +129,42 @@ export const generateSimulationCycle = async (
         };
     });
 
-    fullText += `## 👁️ RAPPORTO DALLE OMBRE\n${data.shadowReport}\n\n`;
-    fullText += `## ⚠️ SVILUPPO NARRATIVO\n${data.narrativeDilemma}`;
-
-    const diceRolls: Record<string, number> = {};
-    calculatedResults.forEach(r => diceRolls[r.ventureId] = r.rawRoll);
+    const shadowReport = data.shadowReport || "Le ombre di Ched Nasad si allungano. Si dice che le Casate stiano riposizionando i loro pezzi sulla scacchiera del potere.";
+    const narrativeDilemma = data.narrativeDilemma || "Un messaggero è arrivato con una richiesta urgente. Il tempo stringe e la decisione spetta solo a voi.";
 
     return {
       cycleNumber: currentCycle,
       date: new Date().toLocaleDateString(),
-      totalGoldChange,
+      totalGoldChange: calculatedResults.reduce((sum, res) => sum + res.netGold, 0),
       ventureReports: enrichedVentureReports,
-      shadowReport: data.shadowReport,
-      narrativeDilemma: data.narrativeDilemma,
-      fullRawText: fullText,
-      diceRolls
+      shadowReport,
+      narrativeDilemma,
+      diceRolls: calculatedResults.reduce((acc, r) => ({ ...acc, [r.ventureId]: r.rawRoll }), {}),
+      fullRawText: ""
     };
 
   } catch (error) {
-    console.error("Simulation failed:", error);
-    throw error;
+    console.error("Simulation AI failed:", error);
+    // Return a purely mathematical report if AI fails
+    return {
+      cycleNumber: currentCycle,
+      date: new Date().toLocaleDateString(),
+      totalGoldChange: calculatedResults.reduce((sum, res) => sum + res.netGold, 0),
+      ventureReports: calculatedResults.map(r => ({
+        ventureId: r.ventureId,
+        ventureName: r.ventureName,
+        economicResult: `Movimento netto di ${r.netGold} mo.`,
+        netGold: r.netGold,
+        logisticsStatus: "Operatività standard.",
+        politicalImpact: "Nessun impatto rilevante.",
+        eventName: r.event.name,
+        eventCategory: r.event.category,
+        modifiedRoll: r.modifiedRoll
+      })),
+      shadowReport: "Le nebbie dell'Underdark nascondono i movimenti delle fazioni.",
+      narrativeDilemma: "Una calma inquietante avvolge le vostre attività.",
+      diceRolls: calculatedResults.reduce((acc, r) => ({ ...acc, [r.ventureId]: r.rawRoll }), {}),
+      fullRawText: ""
+    };
   }
 };
