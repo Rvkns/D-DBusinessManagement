@@ -103,8 +103,18 @@ export const generateSimulationCycle = async (
     const jsonText = response.text;
     if (!jsonText) throw new Error("Empty response from AI");
     
-    // Robust JSON extraction: handle markdown code blocks if the AI includes them
-    const cleanJson = jsonText.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+    // Find json block if wrapped, otherwise use the whole text
+    const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    let cleanJson = jsonMatch ? jsonMatch[1].trim() : jsonText.trim();
+    
+    // In case the AI returns something like "JSON\n{" at the start
+    if (!cleanJson.startsWith('{') && cleanJson.includes('{')) {
+        cleanJson = cleanJson.substring(cleanJson.indexOf('{'));
+    }
+    if (!cleanJson.endsWith('}') && cleanJson.lastIndexOf('}') !== -1) {
+        cleanJson = cleanJson.substring(0, cleanJson.lastIndexOf('}') + 1);
+    }
+
     const data = JSON.parse(cleanJson);
 
     const enrichedVentureReports = calculatedResults.map(calc => {
@@ -148,7 +158,7 @@ export const generateSimulationCycle = async (
       fullRawText: ""
     };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Simulation AI failed:", error);
     // Return a purely mathematical report if AI fails
     return {
@@ -158,16 +168,19 @@ export const generateSimulationCycle = async (
       ventureReports: calculatedResults.map(r => ({
         ventureId: r.ventureId,
         ventureName: r.ventureName,
-        economicResult: `Movimento netto di ${r.netGold} mo.`,
+        economicResult: `Movimento netto di ${r.netGold} mo. (Narrativa fallback: Errore IA)`,
         netGold: r.netGold,
-        logisticsStatus: "Operatività standard.",
-        politicalImpact: "Nessun impatto rilevante.",
+        logisticsStatus: "Operatività standard. (Dettagli indisponibili)",
+        politicalImpact: "Nessun impatto rilevante registrato.",
         eventName: r.event.name,
         eventCategory: r.event.category,
-        modifiedRoll: r.modifiedRoll
+        modifiedRoll: r.modifiedRoll,
+        newEfficiency: r.newEfficiency,
+        newLoyalty: r.newLoyalty,
+        newNotoriety: r.newNotoriety
       })),
-      shadowReport: "Le nebbie dell'Underdark nascondono i movimenti delle fazioni.",
-      narrativeDilemma: "Una calma inquietante avvolge le vostre attività.",
+      shadowReport: `Le nebbie dell'Underdark nascondono i movimenti delle fazioni. [SYSTEM LOG: Il motore narrativo ha riscontrato un'anomalia. ${error?.message || "Errore sconosciuto"}]`,
+      narrativeDilemma: "Una calma inquietante avvolge le vostre attività. Attendete il prossimo ciclo.",
       diceRolls: calculatedResults.reduce((acc, r) => ({ ...acc, [r.ventureId]: r.rawRoll }), {}),
       fullRawText: ""
     };
