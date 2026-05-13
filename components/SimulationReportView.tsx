@@ -1,6 +1,6 @@
 import React from 'react';
 import { CycleReport } from '../types';
-import { ScrollText, TrendingUp, TrendingDown, Eye, AlertTriangle, Dice6 } from 'lucide-react';
+import { ScrollText, TrendingUp, TrendingDown, Eye, AlertTriangle, Dice6, FileText } from 'lucide-react';
 
 const CATEGORY_STYLES: Record<string, string> = {
   CRITICAL:  'bg-red-900/60 text-red-300 border-red-700',
