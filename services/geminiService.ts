@@ -56,7 +56,20 @@ export const generateSimulationCycle = async (
     3. Il 'shadowReport' deve contenere rumors e segreti basati sui risultati.
     4. Il 'narrativeDilemma' deve essere un gancio per la prossima sessione.
     
-    RESTITUISCI SOLO JSON.
+    RESTITUISCI SOLO JSON. NESSUN TESTO FUORI DAL JSON.
+    OUTPUT FORMAT:
+    {
+      "ventureReports": [
+        {
+          "ventureId": "ID dell'attività",
+          "economicResult": "Spiegazione narrativa...",
+          "logisticsStatus": "Stato del personale...",
+          "politicalImpact": "Reazione delle fazioni..."
+        }
+      ],
+      "shadowReport": "Rumors e segreti...",
+      "narrativeDilemma": "Gancio per la sessione..."
+    }
   `;
 
   try {
@@ -64,26 +77,7 @@ export const generateSimulationCycle = async (
       model: MODEL_NAME,
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            ventureReports: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  ventureId: { type: Type.STRING },
-                  economicResult: { type: Type.STRING },
-                  logisticsStatus: { type: Type.STRING },
-                  politicalImpact: { type: Type.STRING }
-                }
-              }
-            },
-            shadowReport: { type: Type.STRING },
-            narrativeDilemma: { type: Type.STRING }
-          }
-        }
+        responseMimeType: "application/json"
       }
     });
 
