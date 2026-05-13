@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, DbUserProfile } from './services/supabaseClient';
-import { getCurrentUser, getUserProfile, onAuthStateChange, signOut, updateUserProfile } from './services/authService';
+import { getCurrentSession, getCurrentUser, getUserProfile, onAuthStateChange, signOut, updateUserProfile } from './services/authService';
 import ProfileModal from './components/ProfileModal';
 import AuthScreen from './components/AuthScreen';
 import DMView from './components/DMView';
@@ -23,52 +23,66 @@ export default function App() {
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [toast, setToast] = useState<{message: string; type: 'success' | 'error' | 'info'} | null>(null);
 
+    const userIdRef = React.useRef<string | null>(null);
+
     useEffect(() => {
-        const initAuth = async () => {
-            try {
-                const currentUser = await getCurrentUser();
-                if (currentUser) {
-                    let userProfile = await getUserProfile(currentUser.id);
-                    if (currentUser.email === 'sentz01@gmail.com' && userProfile?.role !== 'dm') {
-                        await supabase.from('user_profiles').upsert({ id: currentUser.id, role: 'dm' });
-                        userProfile = await getUserProfile(currentUser.id);
-                    }
+        let isMounted = true;
 
-                    setUser(currentUser);
-                    setProfile(userProfile);
-                    if (userProfile?.role === 'player') await fetchPlayerData(currentUser.id, userProfile);
-                    else if (userProfile?.role === 'dm') await fetchDMCampaign(currentUser.id);
-                }
-            } catch (error) {
-                console.error('Auth initialization error:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        initAuth();
-
-        const subscription = onAuthStateChange(async (session) => {
-            try {
-                if (session?.user) {
-                    const userProfile = await getUserProfile(session.user.id);
-                    setUser(session.user);
-                    setProfile(userProfile);
-                    if (userProfile?.role === 'player') await fetchPlayerData(session.user.id, userProfile);
-                    else if (userProfile?.role === 'dm') await fetchDMCampaign(session.user.id);
-                } else {
+        const handleSession = async (session: any) => {
+            if (!session?.user) {
+                if (isMounted) {
+                    userIdRef.current = null;
                     setUser(null);
                     setProfile(null);
                     setActiveCampaignId(null);
                     setPlayerVentures([]);
                     setPlayerHistory([]);
+                    setLoading(false);
                 }
-            } catch (error) {
-                console.error('Auth state change error:', error);
+                return;
             }
+
+            if (userIdRef.current === session.user.id) {
+                return; // Already initialized for this user, token refresh
+            }
+
+            try {
+                userIdRef.current = session.user.id;
+                let userProfile = await getUserProfile(session.user.id);
+                if (session.user.email === 'sentz01@gmail.com' && userProfile?.role !== 'dm') {
+                    await supabase.from('user_profiles').upsert({ id: session.user.id, role: 'dm' });
+                    userProfile = await getUserProfile(session.user.id);
+                }
+
+                if (isMounted) {
+                    setUser(session.user);
+                    setProfile(userProfile);
+                }
+                
+                if (userProfile?.role === 'player') await fetchPlayerData(session.user.id, userProfile);
+                else if (userProfile?.role === 'dm') await fetchDMCampaign(session.user.id);
+            } catch (error) {
+                console.error('Auth initialization error:', error);
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        };
+
+        const initAuth = async () => {
+            const session = await getCurrentSession();
+            await handleSession(session);
+        };
+
+        initAuth();
+
+        const subscription = onAuthStateChange(async (session) => {
+            await handleSession(session);
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            isMounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
     const fetchPlayerData = async (userId: string, userProfile?: DbUserProfile | null) => {
