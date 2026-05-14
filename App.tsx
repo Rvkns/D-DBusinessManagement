@@ -16,6 +16,8 @@ export default function App() {
     const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
     const [playerVentures, setPlayerVentures] = useState<Venture[]>([]);
     const [playerHistory, setPlayerHistory] = useState<CycleReport[]>([]);
+    const [playerGold, setPlayerGold] = useState(0);
+    const [playerCycle, setPlayerCycle] = useState(1);
     const [dmCampaignLoading, setDmCampaignLoading] = useState(false);
     const [joinCode, setJoinCode] = useState('');
     const [joinLoading, setJoinLoading] = useState(false);
@@ -168,6 +170,17 @@ export default function App() {
                 fullRawText: h.full_raw_text
             })));
         }
+
+        const { data: campaign } = await supabase
+            .from('campaigns')
+            .select('gold, cycle')
+            .eq('id', campaignId)
+            .maybeSingle();
+        
+        if (campaign) {
+            setPlayerGold(campaign.gold);
+            setPlayerCycle(campaign.cycle);
+        }
     };
 
     const fetchDMCampaign = async (userId: string) => {
@@ -284,6 +297,8 @@ export default function App() {
                         currentUserId={user.id} 
                         ventures={playerVentures} 
                         history={playerHistory} 
+                        gold={playerGold}
+                        cycle={playerCycle}
                         onSelectDirective={handleSelectDirective} 
                         onLockDirective={handleLockDirective} 
                         onOpenProfile={() => setShowProfileModal(true)} 

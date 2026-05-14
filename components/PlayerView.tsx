@@ -3,19 +3,24 @@ import { Venture, CycleReport, DirectiveId } from '../types';
 import VentureCard from './VentureCard';
 import DirectivePanel from './DirectivePanel';
 import SimulationReportView from './SimulationReportView';
-import { Gem, LogOut, ShieldCheck, AlertCircle, UserCircle } from 'lucide-react';
+import { Gem, LogOut, ShieldCheck, AlertCircle, UserCircle, Book } from 'lucide-react';
 import { signOut } from '../services/authService';
+import WikiView from './WikiView';
 
 interface PlayerViewProps {
     currentUserId: string;
     ventures: Venture[];
     history: CycleReport[];
+    gold: number;
+    cycle: number;
     onSelectDirective: (ventureId: string, directiveId: DirectiveId) => void;
     onLockDirective: (ventureId: string) => void;
     onOpenProfile: () => void;
 }
 
-export default function PlayerView({ currentUserId, ventures, history, onSelectDirective, onLockDirective, onOpenProfile }: PlayerViewProps) {
+export default function PlayerView({ currentUserId, ventures, history, gold, cycle, onSelectDirective, onLockDirective, onOpenProfile }: PlayerViewProps) {
+    const [showWiki, setShowWiki] = React.useState(false);
+
     const handleLogout = async () => {
         try {
             await signOut();
@@ -48,22 +53,41 @@ export default function PlayerView({ currentUserId, ventures, history, onSelectD
                             <p className="text-xs text-drow-400 uppercase tracking-widest hidden md:block">Pannello Giocatore</p>
                         </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                        <button 
-                            onClick={onOpenProfile}
-                            className="flex items-center space-x-2 text-drow-400 hover:text-white transition-colors p-2 rounded hover:bg-white/5"
-                            title="Modifica Profilo"
-                        >
-                            <UserCircle size={20} />
-                            <span className="text-sm font-bold uppercase hidden md:inline">Profilo</span>
-                        </button>
-                        <button 
-                            onClick={handleLogout}
-                            className="flex items-center space-x-2 text-gray-400 hover:text-red-400 transition-colors p-2 rounded hover:bg-white/5"
-                        >
-                            <span className="text-sm font-bold uppercase hidden md:inline">Esci</span>
-                            <LogOut size={18} />
-                        </button>
+                    <div className="flex items-center space-x-6 md:space-x-8">
+                        <div className="text-center">
+                            <div className="text-[10px] text-drow-400 uppercase font-bold tracking-wider mb-1">Ciclo</div>
+                            <div className="text-2xl font-mono font-bold text-white leading-none">{cycle}</div>
+                        </div>
+                        <div className="text-center bg-black/30 px-4 py-1.5 rounded border border-drow-800">
+                            <div className="text-[10px] text-drow-400 uppercase font-bold tracking-wider">Tesoro Reale</div>
+                            <div className={`text-xl md:text-2xl font-mono font-bold ${gold < 0 ? 'text-red-500' : 'text-yellow-500'}`}>
+                                {gold.toLocaleString()} <span className="text-sm text-yellow-700">MO</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <button 
+                                onClick={() => setShowWiki(true)}
+                                className="text-drow-400 hover:text-white p-2 transition-colors"
+                                title="Wiki & Guida"
+                            >
+                                <Book size={20} />
+                            </button>
+                            <button 
+                                onClick={onOpenProfile}
+                                className="flex items-center space-x-2 text-drow-400 hover:text-white transition-colors p-2 rounded hover:bg-white/5"
+                                title="Modifica Profilo"
+                            >
+                                <UserCircle size={20} />
+                                <span className="text-sm font-bold uppercase hidden md:inline">Profilo</span>
+                            </button>
+                            <button 
+                                onClick={handleLogout}
+                                className="flex items-center space-x-2 text-gray-400 hover:text-red-400 transition-colors p-2 rounded hover:bg-white/5"
+                            >
+                                <span className="text-sm font-bold uppercase hidden md:inline">Esci</span>
+                                <LogOut size={18} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -154,6 +178,8 @@ export default function PlayerView({ currentUserId, ventures, history, onSelectD
                     </>
                 )}
             </main>
+
+            {showWiki && <WikiView onClose={() => setShowWiki(false)} />}
         </div>
     );
 }
